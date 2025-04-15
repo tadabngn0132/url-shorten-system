@@ -28,6 +28,55 @@ namespace url_shorten_service.Controllers
             return await _context.Url.ToListAsync();
         }
 
+        // GET: r/{shortCode} - Chuyển hướng trực tiếp từ shortcode đến URL đích
+        [HttpGet]
+        [Route("/r/{shortCode}")]
+        public async Task<IActionResult> RedirectFromShortCode(string shortCode)
+        {
+            var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
+
+            if (url == null)
+            {
+                return NotFound();
+            }
+
+            string originalUrl = url.OriginalUrl;
+
+            // Đảm bảo URL có tiền tố http:// hoặc https://
+            if (!originalUrl.StartsWith("http://") && !originalUrl.StartsWith("https://"))
+            {
+                originalUrl = "https://" + originalUrl;
+            }
+
+            // Kiểm tra và xác nhận URL hợp lệ
+            if (!Uri.TryCreate(originalUrl, UriKind.Absolute, out Uri uriResult)
+                || (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+            {
+                return BadRequest("URL không hợp lệ");
+            }
+
+            // Cập nhật số lượt truy cập nếu bạn có thêm trường này trong model
+            // url.ClickCount++;
+            // await _context.SaveChangesAsync();
+
+            // Chuyển hướng đến URL gốc
+            return Redirect(originalUrl);
+        }
+
+        // GET: api/Urls/code
+        [HttpGet("shortcode/{code}")]
+        public async Task<ActionResult<Url>> GetOriginalUrlByShortcode(String code)
+        {
+            var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == code);
+
+            if (url == null)
+            {
+                return NotFound();
+            }
+
+            return url;
+        }
+
         // GET: api/Urls/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Url>> GetUrl(int id)
