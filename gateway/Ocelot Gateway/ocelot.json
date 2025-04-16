@@ -54,6 +54,31 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/redirect/{shortCode}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996 // Port của .NET Service
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
+      "UpstreamHttpMethod": [ "GET" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "Region": "url-cache",
+        "TtlSeconds": 15
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/users",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
