@@ -94,8 +94,20 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
+            // Nếu shortcode mới khác với shortcode cũ và không trống
+            if (!string.IsNullOrEmpty(url.ShortCode) && url.ShortCode != existingUrl.ShortCode)
+            {
+                // Kiểm tra xem shortcode mới đã tồn tại chưa
+                bool shortCodeExists = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode && u.Id != id);
+
+                if (shortCodeExists)
+                {
+                    // Trả về lỗi 400 Bad Request với thông báo
+                    return BadRequest(new { error = "This short code is already in use. Please choose another one." });
+                }
+            }
             // Nếu shortcode mới là null hoặc trống, giữ nguyên shortcode cũ
-            if (string.IsNullOrEmpty(url.ShortCode))
+            else if (string.IsNullOrEmpty(url.ShortCode))
             {
                 url.ShortCode = existingUrl.ShortCode;
             }
@@ -127,10 +139,22 @@ namespace url_shorten_service.Controllers
         [HttpPost]
         public async Task<ActionResult<Url>> PostUrl(Url url)
         {
-            // Kiểm tra xem người dùng đã cung cấp alias chưa
-            if (string.IsNullOrEmpty(url.ShortCode))
+            // Kiểm tra người dúng có nhập custom shortcode chưa
+            // Nếu người dùng cung cấp custom shortcode
+            if (!string.IsNullOrEmpty(url.ShortCode))
             {
-                // Tạo shortcode độc nhất
+                // Kiểm tra xem shortcode đã tồn tại trong database chưa
+                bool isExistingShortCode = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode);
+
+                if (isExistingShortCode)
+                {
+                    // Trả về lỗi 400 Bad Request với thông báo
+                    return BadRequest(new { error = "This short code is already in use. Please choose another one." });
+                }
+            }
+            else
+            {
+                // Tạo shortcode độc nhất nếu người dùng không cung cấp
                 bool isUnique = false;
                 string newShortCode = "";
 

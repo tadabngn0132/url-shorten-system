@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>url_shorten_service</RootNamespace>
+    <UserSecretsId>5f5dd8ba-0bed-4ac5-a8d9-d7c0e7f1bd87</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
