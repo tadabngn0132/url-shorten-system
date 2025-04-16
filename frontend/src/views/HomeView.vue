@@ -1,18 +1,36 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <Shortener @url-shortened="refreshUrls" />
+    <UrlList :key="refreshKey" />
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+import Shortener from '@/components/Shortener.vue'
+import UrlList from '@/components/UrlList.vue'
 
 export default {
   name: 'HomeView',
   components: {
-    HelloWorld
+    Shortener,
+    UrlList
+  },
+  data() {
+    return {
+      refreshKey: 0
+    }
+  },
+  methods: {
+    refreshUrls() {
+      // Force refresh component technique
+      this.refreshKey += 1;
+    }
   }
 }
 </script>
+
+<style scoped>
+.home {
+  padding: 20px;
+}
+</style>
