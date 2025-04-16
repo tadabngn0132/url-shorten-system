@@ -29,7 +29,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/api/Urls/{id}",
+      "DownstreamPathTemplate": "/redirect/{shortCode}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -37,8 +37,8 @@
           "Port": 6996 // Port của .NET Service
         }
       ],
-      "UpstreamPathTemplate": "/gateway/urls/{id}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ],
+      "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
+      "UpstreamHttpMethod": [ "GET" ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -54,7 +54,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/redirect/{shortCode}",
+      "DownstreamPathTemplate": "/api/Urls/{id}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -62,8 +62,8 @@
           "Port": 6996 // Port của .NET Service
         }
       ],
-      "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamPathTemplate": "/gateway/urls/{id}",
+      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,

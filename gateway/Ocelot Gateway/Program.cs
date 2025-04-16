@@ -18,7 +18,7 @@ builder.Services.AddOcelot(builder.Configuration).AddCacheManager(x =>
 
 var app = builder.Build();
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.UseOcelot().Wait();
