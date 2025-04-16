@@ -73,7 +73,7 @@ export default {
 
                 const payload = {
                     originalUrl: this.originalUrl,
-                    shortCode: this.customCode || undefined,
+                    shortCode: this.customCode || "",
                     createdAt: new Date().toISOString(),
                     userId: "anonymous", // Replace with actual user ID if available
                     isActive: true,
