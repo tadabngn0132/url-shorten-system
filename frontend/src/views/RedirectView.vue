@@ -24,23 +24,8 @@ export default {
             const { shortCode } = this.$route.params;
             
             try {
-            // First, we need to find the original URL based on the shortCode
-            const response = await axios.get('http://localhost:9999/gateway/urls');
-            const urls = response.data;
-            const urlData = urls.find(url => url.shortCode === shortCode);
-            
-            if (urlData && urlData.originalUrl) {
-                // Ensure URL has http:// or https:// prefix
-                let originalUrl = urlData.originalUrl;
-                if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) {
-                originalUrl = 'http://' + originalUrl;
-                }
-                
-                // Redirect to original URL
-                window.location.href = originalUrl;
-            } else {
-                this.error = 'Link does not exist or has expired.';
-            }
+                // Sử dụng API redirect từ backend
+                window.location.href = `http://localhost:9999/gateway/urls/redirect/${shortCode}`;
             } catch (error) {
                 console.error('Error redirecting:', error);
                 this.error = 'Could not redirect. Please try again later.';
