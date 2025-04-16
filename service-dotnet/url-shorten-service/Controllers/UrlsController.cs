@@ -30,7 +30,7 @@ namespace url_shorten_service.Controllers
 
         // GET: r/{shortCode} - Chuyển hướng trực tiếp từ shortcode đến URL đích
         [HttpGet]
-        [Route("/r/{shortCode}")]
+        [Route("/redirect/{shortCode}")]
         public async Task<IActionResult> RedirectFromShortCode(string shortCode)
         {
             var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
@@ -61,20 +61,6 @@ namespace url_shorten_service.Controllers
 
             // Chuyển hướng đến URL gốc
             return Redirect(originalUrl);
-        }
-
-        // GET: api/Urls/code
-        [HttpGet("shortcode/{code}")]
-        public async Task<ActionResult<Url>> GetOriginalUrlByShortcode(String code)
-        {
-            var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == code);
-
-            if (url == null)
-            {
-                return NotFound();
-            }
-
-            return url;
         }
 
         // GET: api/Urls/5
