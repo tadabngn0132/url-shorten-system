@@ -92,7 +92,13 @@ export default {
                 }
             } catch (error) {
                 console.error('Error shortening URL:', error);
-                this.error = 'Failed to shorten the URL. Please try again.';
+                
+                // Hiển thị thông báo lỗi từ backend nếu có
+                if (error.response && error.response.data && error.response.data.error) {
+                    this.error = error.response.data.error;
+                } else {
+                    this.error = 'Failed to shorten the URL. Please try again.';
+                }
             } finally {
                 this.isSubmitting = false;
             }
