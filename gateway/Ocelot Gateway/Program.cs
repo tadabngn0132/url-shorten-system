@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
+using Ocelot.Cache.CacheManager;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,14 +10,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
-<<<<<<< HEAD
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Láº¥y JWT Secret tá»« cáº¥u hÃ¬nh hoáº·c biáº¿n mÃ´i trÆ°á»ng
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? 
-    Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+// L?y JWT Secret t? c?u hình ho?c bi?n môi tr??ng
+var jwtSecret = builder.Configuration["JwtSettings:Secret"] ??
+    Environment.GetEnvironmentVariable("JWT_SECRET") ??
     throw new InvalidOperationException("JWT secret key not found in configuration or environment variables");
 
 // Add JWT Authentication
@@ -34,24 +34,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Add Ocelot
-builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
-builder.Services.AddOcelot(builder.Configuration);
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-// Important! Authentication must be added before UseOcelot
-app.UseAuthentication();
-
-=======
-// Thêm vào ph?n ??u c?a ph??ng th?c ConfigureServices
+// Add CORS policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
@@ -63,19 +46,32 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddOcelot(builder.Configuration).AddCacheManager(x =>
-{
-    x.WithDictionaryHandle();
-});
+// Add Ocelot with cache
+builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+builder.Services.AddOcelot(builder.Configuration)
+    .AddCacheManager(settings => settings.WithDictionaryHandle());
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
 app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-// Và thêm vào ph?n middleware pipeline (tr??c app.UseOcelot())
+
+// Apply CORS middleware (ph?i ??t tr??c Authentication)
 app.UseCors("AllowAll");
->>>>>>> 724a93312ef6339d65799adb653cbdfb2a3b3aa7
-app.UseOcelot().Wait();
+
+// Important! Authentication must be added before UseOcelot
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Cu?i cùng là Ocelot
+await app.UseOcelot();
 
 app.Run();
