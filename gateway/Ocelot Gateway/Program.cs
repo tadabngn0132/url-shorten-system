@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+<<<<<<< HEAD
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -49,6 +50,32 @@ if (app.Environment.IsDevelopment())
 // Important! Authentication must be added before UseOcelot
 app.UseAuthentication();
 
+=======
+// Thêm vào ph?n ??u c?a ph??ng th?c ConfigureServices
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
+
+builder.Services.AddOcelot(builder.Configuration).AddCacheManager(x =>
+{
+    x.WithDictionaryHandle();
+});
+
+var app = builder.Build();
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+// Và thêm vào ph?n middleware pipeline (tr??c app.UseOcelot())
+app.UseCors("AllowAll");
+>>>>>>> 724a93312ef6339d65799adb653cbdfb2a3b3aa7
 app.UseOcelot().Wait();
 
 app.Run();

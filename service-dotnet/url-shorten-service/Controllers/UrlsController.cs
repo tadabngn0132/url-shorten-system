@@ -107,25 +107,9 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
-            // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể cập nhật
-            string userId = HttpContext.Items["UserId"] as string;
-            string userRole = HttpContext.Items["UserRole"] as string;
-
-            if (userId != existingUrl.UserId && userRole != "admin")
-            {
-                return Forbid("You don't have permission to update this URL");
-            }
-
             // Nếu shortcode mới khác với shortcode cũ và không trống
             if (!string.IsNullOrEmpty(url.ShortCode) && url.ShortCode != existingUrl.ShortCode)
             {
-                // Kiểm tra xem shortcode có hợp lệ không (chỉ chứa chữ cái, số, và các ký tự an toàn)
-                var validCodePattern = new System.Text.RegularExpressions.Regex("^[a-zA-Z0-9_-]+$");
-                if (!validCodePattern.IsMatch(url.ShortCode))
-                {
-                    return BadRequest(new { error = "Short code can only contain letters, numbers, underscore and hyphen." });
-                }
-
                 // Kiểm tra xem shortcode mới đã tồn tại chưa
                 bool shortCodeExists = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode && u.Id != id);
 
@@ -176,42 +160,10 @@ namespace url_shorten_service.Controllers
         [HttpPost]
         public async Task<ActionResult<Url>> PostUrl(Url url)
         {
-            // Validate URL format
-            if (!Uri.TryCreate(url.OriginalUrl, UriKind.Absolute, out Uri uriResult) ||
-                (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+            // Kiểm tra xem người dùng đã cung cấp alias chưa
+            if (string.IsNullOrEmpty(url.ShortCode))
             {
-                return BadRequest(new { error = "Invalid URL format. Please provide a valid HTTP or HTTPS URL." });
-            }
-
-            // Lấy UserId từ token JWT nếu có
-            if (HttpContext.Items.ContainsKey("UserId"))
-            {
-                url.UserId = HttpContext.Items["UserId"] as string;
-            }
-
-            // Kiểm tra người dúng có nhập custom shortcode chưa
-            // Nếu người dùng cung cấp custom shortcode
-            if (!string.IsNullOrEmpty(url.ShortCode))
-            {
-                // Kiểm tra xem shortcode có hợp lệ không (chỉ chứa chữ cái, số, và các ký tự an toàn)
-                var validCodePattern = new System.Text.RegularExpressions.Regex("^[a-zA-Z0-9_-]+$");
-                if (!validCodePattern.IsMatch(url.ShortCode))
-                {
-                    return BadRequest(new { error = "Short code can only contain letters, numbers, underscore and hyphen." });
-                }
-
-                // Kiểm tra xem shortcode đã tồn tại trong database chưa
-                bool isExistingShortCode = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode);
-
-                if (isExistingShortCode)
-                {
-                    // Trả về lỗi 400 Bad Request với thông báo
-                    return BadRequest(new { error = "This short code is already in use. Please choose another one." });
-                }
-            }
-            else
-            {
-                // Tạo shortcode độc nhất nếu người dùng không cung cấp
+                // Tạo shortcode độc nhất
                 bool isUnique = false;
                 string newShortCode = "";
 
