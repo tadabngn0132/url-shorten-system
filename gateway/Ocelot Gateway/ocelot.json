@@ -4,6 +4,21 @@
   },
   "Routes": [
     {
+      "DownstreamPathTemplate": "/change-password",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5000 // Port của Node Auth Service
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/change-password",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/Urls",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

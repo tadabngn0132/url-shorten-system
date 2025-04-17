@@ -26,6 +26,15 @@
             <button type="submit" class="btn-shorten" :disabled="isSubmitting">
                 {{ isSubmitting ? 'Processing...' : 'Shorten URL' }}
             </button>
+
+            <!-- Thêm thông báo về tính năng nâng cao cho người dùng đăng nhập -->
+            <div v-if="!isAuthenticated" class="login-prompt">
+                <p>
+                    <router-link to="/login">Log in</router-link> or 
+                    <router-link to="/login">register</router-link> 
+                    for advanced URL management and bulk shortening.
+                </p>
+            </div>
         </form>
 
         <div v-if="error" class="error-message">
@@ -46,6 +55,7 @@
 
 <script>
 import axios from 'axios';
+import { mapGetters, mapState } from 'vuex';
 
 export default {
     name: 'Shortener',
@@ -57,6 +67,10 @@ export default {
             error: '',
             isSubmitting: false,
         };
+    },
+    computed: {
+        ...mapGetters(['isAuthenticated']),
+        ...mapState(['auth'])
     },
     methods: {
         async shortenUrl() {
@@ -75,11 +89,17 @@ export default {
                     originalUrl: this.originalUrl,
                     shortCode: this.customCode || "",
                     createdAt: new Date().toISOString(),
-                    userId: "anonymous", // Replace with actual user ID if available
+                    userId: this.isAuthenticated ? this.auth.user.id : "anonymous", // Sử dụng ID người dùng nếu đã đăng nhập
                     isActive: true,
                 };
 
-                const response = await axios.post('http://localhost:9999/gateway/urls', payload);
+                // Thêm header xác thực nếu người dùng đã đăng nhập
+                const headers = {};
+                if (this.isAuthenticated && this.auth.token) {
+                    headers['Authorization'] = `Bearer ${this.auth.token}`;
+                }
+
+                const response = await axios.post('http://localhost:9999/gateway/urls', payload, { headers });
 
                 if (response.data && response.data.shortCode) {
                     this.shortenedUrl = `${window.location.origin}/${response.data.shortCode}`;
@@ -112,7 +132,6 @@ export default {
         },
     }
 }
-
 </script>
 
 <style scoped>
@@ -207,4 +226,21 @@ h1 {
     cursor: pointer;
 }
 
+.login-prompt {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.login-prompt a {
+    color: #42b983;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.login-prompt a:hover {
+    text-decoration: underline;
+}
 </style>

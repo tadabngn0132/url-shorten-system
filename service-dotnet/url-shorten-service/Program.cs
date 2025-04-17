@@ -1,10 +1,14 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using url_shorten_service.Data;
+using url_shorten_service.Middleware;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Cấu hình DbContext
 builder.Services.AddDbContext<url_shorten_serviceContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("url_shorten_serviceContext") ?? throw new InvalidOperationException("Connection string 'url_shorten_serviceContext' not found.")));
 
+// Cấu hình CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins",
@@ -16,19 +20,16 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Add services to the container.
-
+// Thêm services vào container
 builder.Services.AddControllers();
-builder.Services.AddDbContext<url_shorten_serviceContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Cấu hình pipeline HTTP request
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -37,7 +38,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Sử dụng CORS
 app.UseCors("AllowAllOrigins");
+
+// Thêm middleware xác thực JWT - CHÚ Ý: Đừng đăng ký như một service
+app.UseJwtAuth();
 
 app.UseAuthorization();
 

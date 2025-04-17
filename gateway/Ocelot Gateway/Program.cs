@@ -1,41 +1,49 @@
-using Ocelot.Cache.CacheManager;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add services to the container.
+builder.Services.AddControllers();
+
+// Add Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Configuration.AddJsonFile(
-  "ocelot.json",
-  optional: false,
-  reloadOnChange: true
-  );
+builder.Services.AddSwaggerGen();
 
-// Thêm vào ph?n ??u c?a ph??ng th?c ConfigureServices
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        builder =>
+// Add JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
         {
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
-        });
-});
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("your_jwt_secret_key_for_validation")), // Pháº£i giá»‘ng vá»›i khÃ³a bÃ­ máº­t á»Ÿ Node.js Auth Service
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
-builder.Services.AddOcelot(builder.Configuration).AddCacheManager(x =>
-{
-    x.WithDictionaryHandle();
-});
+// Add Ocelot
+builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+builder.Services.AddOcelot(builder.Configuration);
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-// Và thêm vào ph?n middleware pipeline (tr??c app.UseOcelot())
-app.UseCors("AllowAll");
-app.UseOcelot().Wait();
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
+// Important! Authentication must be added before UseOcelot
+app.UseAuthentication();
+
+app.UseOcelot().Wait();
 
 app.Run();

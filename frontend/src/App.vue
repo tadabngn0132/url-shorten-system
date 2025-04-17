@@ -1,13 +1,7 @@
 <template>
   <div id="app">
     <header>
-      <nav>
-        <div class="logo">URL Shortener</div>
-        <div class="nav-links">
-          <router-link to="/">Home</router-link>
-          <router-link to="/about">About</router-link>
-        </div>
-      </nav>
+      <Navbar/>
     </header>
     
     <main>
@@ -19,6 +13,16 @@
     </footer>
   </div>
 </template>
+
+<script>
+import Navbar from './components/Navbar.vue';
+
+export default {
+  components: {
+    Navbar
+  }
+}
+</script>
 
 <style>
 * {

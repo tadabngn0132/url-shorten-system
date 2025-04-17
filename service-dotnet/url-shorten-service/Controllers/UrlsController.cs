@@ -40,6 +40,12 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
+            // Kiểm tra nếu URL không còn hoạt động
+            if (!url.IsActive)
+            {
+                return BadRequest("This shortened URL is no longer active");
+            }
+
             string originalUrl = url.OriginalUrl;
 
             // Đảm bảo URL có tiền tố http:// hoặc https://
@@ -94,6 +100,15 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
+            // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể cập nhật
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
+            if (userId != existingUrl.UserId && userRole != "admin")
+            {
+                return Forbid("You don't have permission to update this URL");
+            }
+
             // Nếu shortcode mới khác với shortcode cũ và không trống
             if (!string.IsNullOrEmpty(url.ShortCode) && url.ShortCode != existingUrl.ShortCode)
             {
@@ -111,6 +126,10 @@ namespace url_shorten_service.Controllers
             {
                 url.ShortCode = existingUrl.ShortCode;
             }
+
+            // Bảo toàn thông tin UserId và CreatedAt
+            url.UserId = existingUrl.UserId;
+            url.CreatedAt = existingUrl.CreatedAt;
 
             _context.Entry(existingUrl).State = EntityState.Detached;
             _context.Entry(url).State = EntityState.Modified;
@@ -139,6 +158,12 @@ namespace url_shorten_service.Controllers
         [HttpPost]
         public async Task<ActionResult<Url>> PostUrl(Url url)
         {
+            // Lấy UserId từ token JWT nếu có
+            if (HttpContext.Items.ContainsKey("UserId"))
+            {
+                url.UserId = HttpContext.Items["UserId"] as string;
+            }
+
             // Kiểm tra người dúng có nhập custom shortcode chưa
             // Nếu người dùng cung cấp custom shortcode
             if (!string.IsNullOrEmpty(url.ShortCode))
@@ -184,6 +209,15 @@ namespace url_shorten_service.Controllers
             if (url == null)
             {
                 return NotFound();
+            }
+
+            // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể xóa
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
+            if (userId != url.UserId && userRole != "admin")
+            {
+                return Forbid("You don't have permission to delete this URL");
             }
 
             _context.Url.Remove(url);
