@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using url_shorten_service.Data;
 
@@ -11,9 +12,11 @@ using url_shorten_service.Data;
 namespace url_shorten_service.Migrations
 {
     [DbContext(typeof(url_shorten_serviceContext))]
-    partial class url_shorten_serviceContextModelSnapshot : ModelSnapshot
+    [Migration("20250417110502_AddUrlStatsFields")]
+    partial class AddUrlStatsFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

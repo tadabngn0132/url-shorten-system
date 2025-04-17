@@ -8,5 +8,10 @@
         public DateTime CreatedAt { get; set; }
         public string UserId { get; set; }
         public bool IsActive { get; set; }
+
+        // Trường mới
+        public int? ClickCount { get; set; } = 0;
+        public DateTime? LastAccessed { get; set; }
+        public DateTime? ExpiryDate { get; set; }
     }
 }
