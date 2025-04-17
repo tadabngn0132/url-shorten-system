@@ -3,8 +3,12 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import axios from 'axios'
+import apiService from './services/api'
 
 Vue.config.productionTip = false
+
+// Đăng ký API service như là một plugin toàn cục
+Vue.prototype.$api = apiService;
 
 // Thiết lập interceptor cho axios để tự động thêm token vào header
 axios.interceptors.request.use(
@@ -16,6 +20,24 @@ axios.interceptors.request.use(
     return config;
   },
   error => {
+    return Promise.reject(error);
+  }
+);
+
+// Xử lý lỗi response toàn cục
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      // Xóa token nếu hết hạn
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Redirect về trang login nếu cần
+      if (window.location.pathname !== '/login') {
+        router.push('/login?expired=true');
+      }
+    }
     return Promise.reject(error);
   }
 );

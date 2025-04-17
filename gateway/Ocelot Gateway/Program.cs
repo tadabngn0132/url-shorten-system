@@ -13,6 +13,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Lấy JWT Secret từ cấu hình hoặc biến môi trường
+var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? 
+    Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+    throw new InvalidOperationException("JWT secret key not found in configuration or environment variables");
+
 // Add JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer("Bearer", options =>
@@ -20,7 +25,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes("your_jwt_secret_key_for_validation")), // Phải giống với khóa bí mật ở Node.js Auth Service
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSecret)),
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,

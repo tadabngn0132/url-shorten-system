@@ -53,7 +53,10 @@ namespace url_shorten_service.Middleware
             {
                 // Xác minh token JWT
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:Secret"] ?? "your_jwt_secret_key_for_validation");
+                var key = Encoding.ASCII.GetBytes(
+                    _configuration["JwtSettings:Secret"] ?? 
+                    Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+                    throw new InvalidOperationException("JWT secret key not found"));
                 
                 tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {
@@ -72,10 +75,10 @@ namespace url_shorten_service.Middleware
                 context.Items["Username"] = jwtToken.Claims.First(x => x.Type == "username").Value;
                 context.Items["UserRole"] = jwtToken.Claims.First(x => x.Type == "role").Value;
             }
-            catch
+            catch (Exception ex)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync("Invalid token");
+                await context.Response.WriteAsync($"Invalid token: {ex.Message}");
                 return;
             }
 

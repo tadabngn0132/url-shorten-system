@@ -12,14 +12,55 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Kiểm tra JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('JWT_SECRET environment variable is not set!');
+    process.exit(1); // Dừng ứng dụng nếu thiếu secret key
+}
+
+// Cấu hình CORS
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production' 
+        ? ['https://your-production-domain.com'] 
+        : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:8081'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400 // 24 giờ
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
+// Kiểm tra URI MongoDB
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.error('MongoDB URI không được thiết lập trong biến môi trường!');
+    // Trong môi trường phát triển, cho phép kết nối localhost
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('Sử dụng MongoDB local trong môi trường development');
+    } else {
+        process.exit(1); // Dừng ứng dụng trong production nếu thiếu URI
+    }
+}
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth')
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error('MongoDB connection error:', err));
+mongoose.connect(MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000,
+    retryWrites: true,
+    w: "majority"
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => {
+    console.error('MongoDB connection error:', err);
+    if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+    }
+});
 
 // User Schema and Model
 const userSchema = new mongoose.Schema({
@@ -69,7 +110,7 @@ const authenticateToken = (req, res, next) => {
 
     if (token == null) return res.status(401).json({ error: 'Authentication required' });
 
-    jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret', (err, user) => {
+    jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: 'Invalid or expired token' });
         req.user = user;
         next();
@@ -86,6 +127,17 @@ app.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'All fields are required' });
         }
 
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+        }
+
         // Check if user already exists
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
@@ -99,7 +151,7 @@ app.post('/register', async (req, res) => {
         // Generate token
         const token = jwt.sign(
             { id: newUser._id, username: newUser.username, role: newUser.role },
-            process.env.JWT_SECRET || 'your_jwt_secret',
+            JWT_SECRET,
             { expiresIn: '24h' }
         );
 
@@ -143,7 +195,7 @@ app.post('/login', async (req, res) => {
         // Generate token
         const token = jwt.sign(
             { id: user._id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'your_jwt_secret',
+            JWT_SECRET,
             { expiresIn: '24h' }
         );
 
@@ -191,6 +243,11 @@ try {
     // Validate input
     if (!currentPassword || !newPassword) {
         return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    // Validate new password
+    if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters long' });
     }
 
     // Find the user

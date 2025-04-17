@@ -1,6 +1,8 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import axios from 'axios'
+import apiService from '@/services/api'
+
 
 Vue.use(Vuex)
 
@@ -70,22 +72,17 @@ export default new Vuex.Store({
     async fetchUrls({ commit, state }) {
       commit('SET_LOADING', true)
       try {
-        // Add auth token to request if available
-        const headers = {};
-        if (state.auth.token) {
-          headers['Authorization'] = `Bearer ${state.auth.token}`;
-        }
-        
-        const response = await axios.get('http://localhost:9999/gateway/urls', { headers })
+        const response = await apiService.urlService.getAllUrls()
         commit('SET_URLS', response.data)
       } catch (error) {
-        commit('SET_ERROR', error)
+        console.error('Error fetching URLs:', error)
+        commit('SET_ERROR', error.response?.data?.error || 'Failed to fetch URLs')
       } finally {
         commit('SET_LOADING', false)
       }
     },
-    async shortenUrl({ commit, state }, urlData) 
-    {
+    
+    async shortenUrl({ commit, state }, urlData) {
       commit('SET_LOADING', true)
       try {
         // If authenticated, add the user ID to the data
@@ -93,52 +90,37 @@ export default new Vuex.Store({
           urlData.userId = state.auth.user.id;
         }
         
-        // Add auth token to request if available
-        const headers = {};
-        if (state.auth.token) {
-          headers['Authorization'] = `Bearer ${state.auth.token}`;
-        }
-        
-        const response = await axios.post('http://localhost:9999/gateway/urls', urlData, { headers })
+        const response = await apiService.urlService.createUrl(urlData)
         commit('ADD_URL', response.data)
         return response.data
       } catch (error) {
-        commit('SET_ERROR', 'Failed to shorten URL')
         console.error('Error shortening URL:', error)
+        const errorMessage = error.response?.data?.error || 'Failed to shorten URL'
+        commit('SET_ERROR', errorMessage)
+        throw new Error(errorMessage)
       } finally {
         commit('SET_LOADING', false)
       }
     },
+    
     async deleteUrl({ commit, state }, id) {
       commit('SET_LOADING', true)
       try {
-        // Add auth token to request if available
-        const headers = {};
-        if (state.auth.token) {
-          headers['Authorization'] = `Bearer ${state.auth.token}`;
-        }
-        
-        await axios.delete(`http://localhost:9999/gateway/urls/${id}`, { headers })
+        await apiService.urlService.deleteUrl(id)
         commit('REMOVE_URL', id)
       } catch (error) {
-        commit('SET_ERROR', 'Failed to delete URL');
-        console.error('Error deleting URL:', error);
+        console.error('Error deleting URL:', error)
+        commit('SET_ERROR', error.response?.data?.error || 'Failed to delete URL')
+        throw error
       } finally {
         commit('SET_LOADING', false)
       }
     },
+    
     // Auth actions
-    setAuthUser({ commit }, user) {
-      commit('SET_AUTH_USER', user);
-    },
-    setToken({ commit }, token) {
-      commit('SET_TOKEN', token);
-      // Set token in axios default headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    },
     async login({ commit, dispatch }, credentials) {
       try {
-        const response = await axios.post('http://localhost:9999/gateway/auth/login', credentials);
+        const response = await apiService.authService.login(credentials)
         const { token, user } = response.data;
         
         // Save to localStorage
@@ -152,12 +134,14 @@ export default new Vuex.Store({
         return user;
       } catch (error) {
         console.error('Login error:', error);
-        throw error;
+        const errorMessage = error.response?.data?.error || 'Login failed'
+        throw new Error(errorMessage);
       }
     },
+    
     async register({ commit, dispatch }, userData) {
       try {
-        const response = await axios.post('http://localhost:9999/gateway/auth/register', userData);
+        const response = await apiService.authService.register(userData)
         const { token, user } = response.data;
         
         // Save to localStorage
@@ -171,27 +155,16 @@ export default new Vuex.Store({
         return user;
       } catch (error) {
         console.error('Registration error:', error);
-        throw error;
+        const errorMessage = error.response?.data?.error || 'Registration failed'
+        throw new Error(errorMessage);
       }
     },
-    logout({ commit }) {
-      // Remove from localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Update store
-      commit('LOGOUT');
-      
-      // Remove token from axios headers
-      delete axios.defaults.headers.common['Authorization'];
-    },
+    
     async verifyAuth({ commit, state }) {
       if (!state.auth.token) return false;
       
       try {
-        const response = await axios.get('http://localhost:9999/gateway/auth/verify', {
-          headers: { 'Authorization': `Bearer ${state.auth.token}` }
-        });
+        const response = await apiService.authService.verifyToken();
         
         if (response.data.isAuthenticated) {
           commit('SET_AUTH_USER', response.data.user);

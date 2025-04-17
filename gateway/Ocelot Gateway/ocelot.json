@@ -1,21 +1,108 @@
 {
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:9999" // Port của Gateway
+    "BaseUrl": "http://localhost:9999"
   },
   "Routes": [
+    {
+      "DownstreamPathTemplate": "/login",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/login",
+      "UpstreamHttpMethod": [ "POST" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too many login attempts, please try again later",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/register",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/register",
+      "UpstreamHttpMethod": [ "POST" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1d",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Registration limit exceeded",
+        "HttpStatusCode": 429
+      }
+    },
     {
       "DownstreamPathTemplate": "/change-password",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 5000 // Port của Node Auth Service
+          "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/change-password",
       "UpstreamHttpMethod": [ "POST" ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10m",
+        "PeriodTimespan": 1,
+        "Limit": 3,
+        "QuotaExceededMessage": "Too many password change attempts",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/profile",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/profile",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/verify",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/verify",
+      "UpstreamHttpMethod": [ "GET" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 20,
+        "QuotaExceededMessage": "Too many verification requests",
+        "HttpStatusCode": 429
       }
     },
     {
@@ -24,7 +111,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 6996 // Port của .NET Service
+          "Port": 6996
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls",
@@ -49,7 +136,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 6996 // Port của .NET Service
+          "Port": 6996
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
@@ -74,7 +161,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 6996 // Port của .NET Service
+          "Port": 6996
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/{id}",
