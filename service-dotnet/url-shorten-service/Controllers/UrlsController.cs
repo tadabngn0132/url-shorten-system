@@ -33,47 +33,41 @@ namespace url_shorten_service.Controllers
         [Route("/redirect/{shortCode}")]
         public async Task<IActionResult> RedirectFromShortCode(string shortCode)
         {
-            var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
+            try {
+                var url = await _context.Url.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
 
-            if (url == null)
-            {
-                return NotFound(new { error = "URL not found" });
+                if (url == null)
+                {
+                    return NotFound(new { error = "URL not found" });
+                }
+
+                // Kiểm tra nếu URL không còn hoạt động
+                if (!url.IsActive)
+                {
+                    return BadRequest(new { error = "This shortened URL is no longer active" });
+                }
+
+                string originalUrl = url.OriginalUrl;
+
+                // Đảm bảo URL có tiền tố http:// hoặc https://
+                if (!originalUrl.StartsWith("http://") && !originalUrl.StartsWith("https://"))
+                {
+                    originalUrl = "https://" + originalUrl;
+                }
+
+                // Cập nhật số lượt truy cập
+                url.ClickCount = (url.ClickCount ?? 0) + 1;
+                url.LastAccessed = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                // Chuyển hướng đến URL gốc
+                return Redirect(originalUrl);
             }
-
-            // Kiểm tra nếu URL không còn hoạt động
-            if (!url.IsActive)
-            {
-                return BadRequest(new { error = "This shortened URL is no longer active" });
+            catch (Exception ex) {
+                // Log lỗi
+                Console.WriteLine($"Error redirecting: {ex.Message}");
+                return StatusCode(500, new { error = "Internal server error during redirect" });
             }
-
-            // Kiểm tra thời hạn nếu có
-            if (url.ExpiryDate.HasValue && url.ExpiryDate.Value < DateTime.UtcNow)
-            {
-                return BadRequest(new { error = "This shortened URL has expired" });
-            }
-
-            string originalUrl = url.OriginalUrl;
-
-            // Đảm bảo URL có tiền tố http:// hoặc https://
-            if (!originalUrl.StartsWith("http://") && !originalUrl.StartsWith("https://"))
-            {
-                originalUrl = "https://" + originalUrl;
-            }
-
-            // Kiểm tra và xác nhận URL hợp lệ
-            if (!Uri.TryCreate(originalUrl, UriKind.Absolute, out Uri uriResult)
-                || (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
-            {
-                return BadRequest(new { error = "URL không hợp lệ" });
-            }
-
-            // Cập nhật số lượt truy cập
-            url.ClickCount = (url.ClickCount ?? 0) + 1;
-            url.LastAccessed = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            // Chuyển hướng đến URL gốc
-            return Redirect(originalUrl);
         }
 
         // GET: api/Urls/5

@@ -1,6 +1,13 @@
 {
   "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:9999"
+    "BaseUrl": "http://localhost:9999",
+    "RateLimitOptions": {
+      "ClientIdHeader": "ClientId",
+      "DisableRateLimitHeaders": false,
+      "HttpStatusCode": 429,
+      "QuotaExceededMessage": "API rate limit exceeded",
+      "RateLimitCounterPrefix": "ocelot"
+    }
   },
   "Routes": [
     {
@@ -128,6 +135,11 @@
       "FileCacheOptions": {
         "Region": "url-cache",
         "TtlSeconds": 15
+      },
+      "AddHeadersToRequest": {
+        "X-Rate-Limit-Limit": "RateLimit-Limit",
+        "X-Rate-Limit-Remaining": "RateLimit-Remaining",
+        "X-Rate-Limit-Reset": "RateLimit-Reset"
       }
     },
     {
@@ -151,8 +163,8 @@
         "HttpStatusCode": 429
       },
       "FileCacheOptions": {
-        "Region": "url-cache",
-        "TtlSeconds": 15
+        "Region": "url-redirect-cache",
+        "TtlSeconds": 60
       }
     },
     {
@@ -178,6 +190,9 @@
       "FileCacheOptions": {
         "Region": "url-cache",
         "TtlSeconds": 15
+      },
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
       }
     }
   ]

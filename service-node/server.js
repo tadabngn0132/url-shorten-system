@@ -21,13 +21,23 @@ if (!JWT_SECRET) {
 
 // Cấu hình CORS
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-production-domain.com'] 
-        : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:8081'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: (origin, callback) => {
+        // Get allowed origins from env variable
+        const allowedOrigins = process.env.CORS_ORIGIN 
+            ? process.env.CORS_ORIGIN.split(',') 
+            : ['http://localhost:8080', 'http://localhost:8081'];
+            
+        // For development, allow requests with no origin (like mobile apps or curl)
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-    maxAge: 86400 // 24 giờ
+    maxAge: 86400 // 24 hours
 };
 
 // Middleware

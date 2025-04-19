@@ -1,8 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
-import axios from 'axios'
 import apiService from '@/services/api'
-
 
 Vue.use(Vuex)
 
@@ -69,7 +67,7 @@ export default new Vuex.Store({
     }
   },
   actions: {
-    async fetchUrls({ commit, state }) {
+    async fetchUrls({ commit }) {
       commit('SET_LOADING', true)
       try {
         const response = await apiService.urlService.getAllUrls()
@@ -103,7 +101,7 @@ export default new Vuex.Store({
       }
     },
     
-    async deleteUrl({ commit, state }, id) {
+    async deleteUrl({ commit }, id) {
       commit('SET_LOADING', true)
       try {
         await apiService.urlService.deleteUrl(id)
@@ -118,7 +116,7 @@ export default new Vuex.Store({
     },
     
     // Auth actions
-    async login({ commit, dispatch }, credentials) {
+    async login({ commit }, credentials) {
       try {
         const response = await apiService.authService.login(credentials)
         const { token, user } = response.data;
@@ -139,7 +137,7 @@ export default new Vuex.Store({
       }
     },
     
-    async register({ commit, dispatch }, userData) {
+    async register({ commit }, userData) {
       try {
         const response = await apiService.authService.register(userData)
         const { token, user } = response.data;
@@ -171,13 +169,32 @@ export default new Vuex.Store({
           return true;
         } else {
           commit('LOGOUT');
+          // Clear localStorage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           return false;
         }
       } catch (error) {
         console.error('Token verification error:', error);
         commit('LOGOUT');
+        // Clear localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         return false;
       }
+    },
+    
+    logout({ commit }) {
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Update store
+      commit('LOGOUT');
+    },
+    
+    setAuthUser({ commit }, user) {
+      commit('SET_AUTH_USER', user);
     }
   }
 })
