@@ -21,24 +21,15 @@ if (!JWT_SECRET) {
 
 // Cấu hình CORS
 const corsOptions = {
-    origin: (origin, callback) => {
-        // Get allowed origins from env variable
-        const allowedOrigins = process.env.CORS_ORIGIN 
-            ? process.env.CORS_ORIGIN.split(',') 
-            : ['http://localhost:8080', 'http://localhost:8081'];
-            
-        // For development, allow requests with no origin (like mobile apps or curl)
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: process.env.NODE_ENV === 'production' 
+      ? ['https://yourdomain.com'] // Restrictive in production
+      : ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:9999'], // Permissive in development
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400 // 24 hours
+    credentials: true
 };
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(cors(corsOptions));
