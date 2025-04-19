@@ -1,21 +1,19 @@
+// frontend/src/main.js
 import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
 import axios from 'axios'
-import apiService from './services/api'
+import AuthService from './services/auth-service'
 
 Vue.config.productionTip = false
-
-// Đăng ký API service như là một plugin toàn cục
-Vue.prototype.$api = apiService;
 
 // Thiết lập interceptor cho axios để tự động thêm token vào header
 axios.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const authHeader = AuthService.getAuthHeader();
+    if (authHeader.Authorization) {
+      config.headers.Authorization = authHeader.Authorization;
     }
     return config;
   },
@@ -28,19 +26,33 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   response => response,
   error => {
+    // Xử lý lỗi 401 Unauthorized
     if (error.response && error.response.status === 401) {
       // Xóa token nếu hết hạn
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      AuthService.logout();
       
-      // Redirect về trang login nếu cần
-      if (window.location.pathname !== '/login') {
+      // Chuyển hướng về trang login nếu cần
+      if (router.currentRoute.path !== '/login') {
         router.push('/login?expired=true');
       }
     }
     return Promise.reject(error);
   }
 );
+
+// Bảo vệ các tuyến đường yêu cầu xác thực
+router.beforeEach(async (to, from, next) => {
+  const publicPages = ['/login', '/', '/about'];
+  const authRequired = !publicPages.includes(to.path);
+  const isLoggedIn = localStorage.getItem('token');
+
+  // Nếu tuyến đường yêu cầu xác thực và người dùng chưa đăng nhập
+  if (authRequired && !isLoggedIn) {
+    next('/login');
+  } else {
+    next();
+  }
+});
 
 // Khởi tạo app sau khi kiểm tra xác thực
 async function initApp() {
@@ -49,12 +61,15 @@ async function initApp() {
   // Nếu có token lưu trữ, kiểm tra tính hợp lệ
   if (token) {
     try {
-      await store.dispatch('verifyAuth');
+      const result = await AuthService.verifyAuth();
+      if (result.isAuthenticated) {
+        store.commit('auth/loginSuccess', result.user);
+      } else {
+        AuthService.logout();
+      }
     } catch (error) {
       console.error('Token verification failed:', error);
-      // Xóa token không hợp lệ
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      AuthService.logout();
     }
   }
   

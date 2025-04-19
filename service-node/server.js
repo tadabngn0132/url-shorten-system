@@ -12,18 +12,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Kiểm tra JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('JWT_SECRET environment variable is not set!');
-    process.exit(1); // Dừng ứng dụng nếu thiếu secret key
-}
+// JWT Secret - Sử dụng giá trị cố định nếu biến môi trường không tồn tại
+const JWT_SECRET = process.env.JWT_SECRET || 't4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL';
 
 // Cấu hình CORS
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ['https://yourdomain.com'] // Restrictive in production
-      : ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:9999'], // Permissive in development
+    origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:9999'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
@@ -32,38 +26,16 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Middleware
-app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
-// Kiểm tra URI MongoDB
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-    console.error('MongoDB URI không được thiết lập trong biến môi trường!');
-    // Trong môi trường phát triển, cho phép kết nối localhost
-    if (process.env.NODE_ENV !== 'production') {
-        console.log('Sử dụng MongoDB local trong môi trường development');
-    } else {
-        process.exit(1); // Dừng ứng dụng trong production nếu thiếu URI
-    }
-}
+// Kết nối MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth')
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+    });
 
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    retryWrites: true,
-    w: "majority"
-})
-.then(() => console.log('MongoDB connected'))
-.catch(err => {
-    console.error('MongoDB connection error:', err);
-    if (process.env.NODE_ENV === 'production') {
-        process.exit(1);
-    }
-});
-
-// User Schema and Model
+// User Schema và Model
 const userSchema = new mongoose.Schema({
     username: {
         type: String,
@@ -94,7 +66,7 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Hash password before saving
+// Hash password trước khi lưu
 userSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         this.password = await bcrypt.hash(this.password, 10);
@@ -104,12 +76,12 @@ userSchema.pre('save', async function (next) {
 
 const User = mongoose.model('User', userSchema);
 
-// Auth middleware
+// Middleware xác thực token
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) return res.status(401).json({ error: 'Authentication required' });
+    if (!token) return res.status(401).json({ error: 'Authentication required' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: 'Invalid or expired token' });
@@ -118,38 +90,43 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Routes
+// Route đăng ký
 app.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
-        // Validate input
+        console.log('Register request:', { username, email });
+
+        // Kiểm tra input
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'All fields are required' });
         }
 
-        // Validate email format
+        // Kiểm tra định dạng email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return res.status(400).json({ error: 'Invalid email format' });
         }
 
-        // Validate password length
+        // Kiểm tra độ dài mật khẩu
         if (password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters long' });
         }
 
-        // Check if user already exists
+        // Kiểm tra username và email đã tồn tại chưa
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
-            return res.status(400).json({ error: 'Username or email already exists' });
+            if (existingUser.username === username) {
+                return res.status(400).json({ error: 'Username already exists' });
+            }
+            return res.status(400).json({ error: 'Email already exists' });
         }
 
-        // Create new user
+        // Tạo user mới
         const newUser = new User({ username, email, password });
         await newUser.save();
 
-        // Generate token
+        // Tạo token JWT
         const token = jwt.sign(
             { id: newUser._id, username: newUser.username, role: newUser.role },
             JWT_SECRET,
@@ -168,37 +145,49 @@ app.post('/register', async (req, res) => {
         });
     } catch (error) {
         console.error('Registration error:', error);
+        
+        // Nếu lỗi là do trùng khóa (MongoDB duplicate key error)
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({ error: `${field} already exists` });
+        }
+        
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
+// Route đăng nhập
 app.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Validate input
+        console.log('Login attempt:', { username });
+
+        // Kiểm tra input
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        // Find user
+        // Tìm user
         const user = await User.findOne({ username });
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Validate password
+        // Kiểm tra mật khẩu
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Generate token
+        // Tạo token JWT
         const token = jwt.sign(
             { id: user._id, username: user.username, role: user.role },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
+
+        console.log('Login successful:', username);
 
         res.json({
             message: 'Login successful',
@@ -216,13 +205,19 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Route xác minh token
 app.get('/verify', authenticateToken, (req, res) => {
     res.json({
-        user: req.user,
-        isAuthenticated: true
+        isAuthenticated: true,
+        user: {
+            id: req.user.id,
+            username: req.user.username,
+            role: req.user.role
+        }
     });
 });
 
+// Route lấy thông tin profile
 app.get('/profile', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
@@ -236,48 +231,51 @@ app.get('/profile', authenticateToken, async (req, res) => {
     }
 });
 
-// Password change endpoint
+// Route đổi mật khẩu
 app.post('/change-password', authenticateToken, async (req, res) => {
-try {
-    const { currentPassword, newPassword } = req.body;
+    try {
+        const { currentPassword, newPassword } = req.body;
 
-    // Validate input
-    if (!currentPassword || !newPassword) {
-        return res.status(400).json({ error: 'Current password and new password are required' });
+        // Kiểm tra input
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current password and new password are required' });
+        }
+
+        // Kiểm tra độ dài mật khẩu mới
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+        }
+
+        // Tìm user
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Kiểm tra mật khẩu hiện tại
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Current password is incorrect' });
+        }
+
+        // Cập nhật mật khẩu mới
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-
-    // Validate new password
-    if (newPassword.length < 6) {
-        return res.status(400).json({ error: 'New password must be at least 6 characters long' });
-    }
-
-    // Find the user
-    const user = await User.findById(req.user.id);
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Verify current password
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-    if (!isPasswordValid) {
-        return res.status(401).json({ error: 'Current password is incorrect' });
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update user password
-    user.password = hashedPassword;
-    await user.save();
-
-    res.json({ message: 'Password updated successfully' });
-} catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-}
 });
 
-// Start server
+// Route kiểm tra server còn sống không
+app.get('/', (req, res) => {
+    res.json({ message: 'Authentication service is running' });
+});
+
+// Khởi động server
 app.listen(PORT, () => {
     console.log(`Authentication service running on port ${PORT}`);
 });

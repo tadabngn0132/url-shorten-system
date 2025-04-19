@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
+import AuthService from '@/services/auth-service'
 import apiService from '@/services/api'
 
 Vue.use(Vuex)
@@ -118,83 +119,85 @@ export default new Vuex.Store({
     // Auth actions
     async login({ commit }, credentials) {
       try {
-        const response = await apiService.authService.login(credentials)
-        const { token, user } = response.data;
+        commit('SET_LOADING', true)
+        commit('SET_ERROR', null)
         
-        // Save to localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        // Gọi AuthService để đăng nhập
+        const result = await AuthService.login(credentials)
         
-        // Update store
-        commit('SET_AUTH_USER', user);
-        commit('SET_TOKEN', token);
+        // Cập nhật state từ kết quả đăng nhập
+        commit('SET_AUTH_USER', result.user)
+        commit('SET_TOKEN', result.token)
         
-        return user;
+        return result.user
       } catch (error) {
-        console.error('Login error:', error);
-        const errorMessage = error.response?.data?.error || 'Login failed'
-        throw new Error(errorMessage);
+        console.error('Login error:', error)
+        const errorMessage = error.message || 'Login failed'
+        commit('SET_ERROR', errorMessage)
+        throw new Error(errorMessage)
+      } finally {
+        commit('SET_LOADING', false)
       }
     },
     
     async register({ commit }, userData) {
       try {
-        const response = await apiService.authService.register(userData)
-        const { token, user } = response.data;
+        commit('SET_LOADING', true)
+        commit('SET_ERROR', null)
         
-        // Save to localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        // Gọi AuthService để đăng ký
+        const result = await AuthService.register(userData)
         
-        // Update store
-        commit('SET_AUTH_USER', user);
-        commit('SET_TOKEN', token);
+        // Cập nhật state từ kết quả đăng ký
+        commit('SET_AUTH_USER', result.user)
+        commit('SET_TOKEN', result.token)
         
-        return user;
+        return result.user
       } catch (error) {
-        console.error('Registration error:', error);
-        const errorMessage = error.response?.data?.error || 'Registration failed'
-        throw new Error(errorMessage);
+        console.error('Registration error:', error)
+        const errorMessage = error.message || 'Registration failed'
+        commit('SET_ERROR', errorMessage)
+        throw new Error(errorMessage)
+      } finally {
+        commit('SET_LOADING', false)
       }
     },
     
-    async verifyAuth({ commit, state }) {
-      if (!state.auth.token) return false;
-      
+    async verifyAuth({ commit }) {
       try {
-        const response = await apiService.authService.verifyToken();
+        // Xác thực token
+        const result = await AuthService.verifyAuth()
         
-        if (response.data.isAuthenticated) {
-          commit('SET_AUTH_USER', response.data.user);
-          return true;
+        if (result.isAuthenticated) {
+          commit('SET_AUTH_USER', result.user)
+          return true
         } else {
-          commit('LOGOUT');
-          // Clear localStorage
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          return false;
+          // Xóa thông tin xác thực không hợp lệ
+          commit('LOGOUT')
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          return false
         }
       } catch (error) {
-        console.error('Token verification error:', error);
-        commit('LOGOUT');
-        // Clear localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        return false;
+        console.error('Token verification error:', error)
+        commit('LOGOUT')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        return false
       }
     },
     
     logout({ commit }) {
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Xóa thông tin xác thực
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
       
-      // Update store
-      commit('LOGOUT');
+      // Cập nhật state
+      commit('LOGOUT')
     },
     
     setAuthUser({ commit }, user) {
-      commit('SET_AUTH_USER', user);
+      commit('SET_AUTH_USER', user)
     }
   }
 })
