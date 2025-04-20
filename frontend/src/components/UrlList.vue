@@ -32,7 +32,7 @@
 <script>
 import axios from 'axios';
 import UrlItem from './UrlItem.vue';
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters, mapState, mapActions } from 'vuex';
 
 export default {
     name: 'UrlList',
@@ -47,7 +47,9 @@ export default {
     },
     computed: {
         ...mapGetters(['isAuthenticated']),
-        ...mapState(['auth'])
+        ...mapState(['auth', {
+            urls: state => state.urls.urls
+        }])
     },
     created() {
         this.fetchUrls();
@@ -82,26 +84,29 @@ export default {
             }
         },
         async removeUrl(urlId) {
+            if (confirm('Bạn có chắc chắn muốn xóa URL này?')) {
             try {
-                // Thêm header xác thực nếu đã đăng nhập
-                const headers = {};
-                if (this.isAuthenticated && this.auth.token) {
-                    headers['Authorization'] = `Bearer ${this.auth.token}`;
-                }
-                
-                await axios.delete(`http://localhost:9999/gateway/urls/${urlId}`, { headers });
-                this.urls = this.urls.filter(url => url.id !== urlId);
-                
-                // Nếu là khách, cập nhật localStorage
-                if (!this.isAuthenticated) {
-                    const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds')) || [];
-                    const updatedIds = guestUrlIds.filter(id => id !== urlId);
-                    localStorage.setItem('guestUrlIds', JSON.stringify(updatedIds));
-                }
+                await this.deleteUrlAction(urlId);
+                this.$notify({
+                    type: 'success',
+                    title: 'Thành công',
+                    text: 'URL đã được xóa thành công'
+                });
             } catch (error) {
-                console.error('Error deleting URL:', error);
+                if (!error.response || error.response.status !== 401) {
+                    this.$notify({
+                    type: 'error',
+                    title: 'Lỗi',
+                    text: 'Không thể xóa URL. Vui lòng thử lại sau.'
+                    });
+                }
+                // Không cần xử lý lỗi 401 vì interceptor đã xử lý
             }
+        }
         },
+        ...mapActions({
+            deleteUrlAction: 'deleteUrl'
+        }),
         // Phương thức để lưu ID URL mới của khách
         saveGuestUrlId(urlId) {
             if (!this.isAuthenticated) {

@@ -83,38 +83,37 @@
         this.isLoading = true;
         
         try {
-          let response;
+          let userData;
           
           if (this.isRegister) {
             // Register
-            response = await axios.post('http://localhost:9999/gateway/auth/register', {
+            const registerData = {
               username: this.username,
               email: this.email,
               password: this.password
-            });
+            };
+            
+            // Sử dụng action register từ store
+            userData = await this.$store.dispatch('register', registerData);
           } else {
             // Login
-            response = await axios.post('http://localhost:9999/gateway/auth/login', {
+            const loginData = {
               username: this.username,
               password: this.password
-            });
+            };
+            
+            // Sử dụng action login từ store
+            userData = await this.$store.dispatch('login', loginData);
           }
           
-          if (response.data && response.data.token) {
-            // Store token and user info
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
-            
-            // Dispatch Vuex action to update auth state
-            this.$store.dispatch('setAuthUser', response.data.user);
-            
-            // Redirect to home page
-            this.$router.push('/');
-          }
+          // Redirect to home page
+          this.$router.push('/');
         } catch (err) {
           console.error('Authentication error:', err);
           if (err.response && err.response.data && err.response.data.error) {
             this.error = err.response.data.error;
+          } else if (err.message) {
+            this.error = err.message;
           } else {
             this.error = 'Authentication failed. Please try again.';
           }

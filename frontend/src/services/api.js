@@ -21,59 +21,52 @@ apiService.interceptors.request.use(
   }
 );
 
-// Interceptor để xử lý response errors
+// Interceptor xử lý response errors
 apiService.interceptors.response.use(
   response => response,
   error => {
-    // Xử lý lỗi 401 (Unauthorized)
     if (error.response && error.response.status === 401) {
-      // Xóa token nếu hết hạn
+      // Xóa token và thông tin user
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Redirect về trang login nếu cần
-      if (window.location.pathname !== '/login') {
-        window.location = '/login?expired=true';
-      }
+      // Cập nhật trạng thái xác thực trong store
+      store.commit('auth/setAuthenticated', false);
+      
+      // Redirect tới trang login
+      router.push('/login?expired=true');
     }
     return Promise.reject(error);
+  }
+);
+  
+// Các methods hỗ trợ
+export const urlService = {
+  getAllUrls: () => apiService.get('/gateway/urls'),
+  
+  getUrl: (id) => apiService.get(`/gateway/urls/${id}`),
+  
+  createUrl: (urlData) => apiService.post('/gateway/urls', urlData),
+  
+  updateUrl: (id, urlData) => apiService.put(`/gateway/urls/${id}`, urlData),
+  
+  deleteUrl: (id) => apiService.delete(`/gateway/urls/${id}`)
+};
 
-    // Xử lý lỗi mạng
-    if (!error.response) {
-        console.error('Network error, please check your connection');
-      }
-      
-      return Promise.reject(error);
-    }
-  );
+export const authService = {
+  login: (credentials) => apiService.post('/gateway/auth/login', credentials),
   
-  // Các methods hỗ trợ
-  export const urlService = {
-    getAllUrls: () => apiService.get('/gateway/urls'),
-    
-    getUrl: (id) => apiService.get(`/gateway/urls/${id}`),
-    
-    createUrl: (urlData) => apiService.post('/gateway/urls', urlData),
-    
-    updateUrl: (id, urlData) => apiService.put(`/gateway/urls/${id}`, urlData),
-    
-    deleteUrl: (id) => apiService.delete(`/gateway/urls/${id}`)
-  };
+  register: (userData) => apiService.post('/gateway/auth/register', userData),
   
-  export const authService = {
-    login: (credentials) => apiService.post('/gateway/auth/login', credentials),
-    
-    register: (userData) => apiService.post('/gateway/auth/register', userData),
-    
-    verifyToken: () => apiService.get('/gateway/auth/verify'),
-    
-    getProfile: () => apiService.get('/gateway/auth/profile'),
-    
-    changePassword: (passwordData) => apiService.post('/gateway/auth/change-password', passwordData)
-  };
+  verifyToken: () => apiService.get('/gateway/auth/verify'),
   
-  export default {
-    apiService,
-    urlService,
-    authService
-  };
+  getProfile: () => apiService.get('/gateway/auth/profile'),
+  
+  changePassword: (passwordData) => apiService.post('/gateway/auth/change-password', passwordData)
+};
+
+export default {
+  apiService,
+  urlService,
+  authService
+};

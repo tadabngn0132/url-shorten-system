@@ -56,7 +56,8 @@
                 </div>
                 <div class="short-url">
                   <h4>Shortened URL:</h4>
-                  <a :href="getFullShortUrl(url)" target="_blank">{{ getFullShortUrl(url) }}</a>
+                  <a v-if="url.isActive === true" :href="getFullShortUrl(url)" target="_blank">{{ getFullShortUrl(url) }}</a>
+                  <span v-else class="disabled-link">{{ getFullShortUrl(url) }}</span>
                   <button @click="copyToClipboard(getFullShortUrl(url))" class="btn-copy">
                     Copy
                   </button>
@@ -343,6 +344,11 @@
     color: #42b983;
     text-decoration: none;
     margin-right: 10px;
+  }
+
+  .disabled-link {
+    color: #999;
+    cursor: default;
   }
   
   .created-at {

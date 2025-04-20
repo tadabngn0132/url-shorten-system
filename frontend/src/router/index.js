@@ -19,11 +19,13 @@ const requireAuth = (to, from, next) => {
   }
 };
 
-// Navigation guard for guest routes (redirect if already logged in)
+// Kiểm tra logic của requireGuest
 const requireGuest = (to, from, next) => {
   if (store.getters.isAuthenticated) {
-    next('/');
+    console.log("User is authenticated, redirecting from login page");
+    next('/'); // chuyển hướng đến trang chủ nếu đã đăng nhập
   } else {
+    console.log("User is a guest, allowing access to login page");
     next();
   }
 };
@@ -49,7 +51,10 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: Dashboard,
-    beforeEnter: requireAuth
+    meta: { 
+      requiresAuth: true,
+      requiresAdmin: true 
+    }
   },
   {
     path: '/profile',
@@ -76,16 +81,53 @@ const router = new VueRouter({
   routes
 })
 
-// Global navigation guard
-router.beforeEach(async (to, from, next) => {
-  // If the user is logged in (has a token), but we're not sure if it's valid
-  if (store.state.auth.token && !store.state.auth.isAuthenticated) {
-    try {
-      // Verify the token
-      await store.dispatch('verifyAuth');
-      next();
-    } catch (error) {
-      console.error('Auth verification error:', error);
+// Điều chỉnh global navigation guard
+router.beforeEach((to, from, next) => {
+  // Lấy thông tin xác thực hiện tại
+  const token = localStorage.getItem('token');
+  const isAuthenticated = !!token; 
+  
+  console.log('Navigating from', from.path, 'to', to.path);
+  console.log('Auth state:', isAuthenticated);
+
+  // Nếu đang cố truy cập trang yêu cầu đăng nhập
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!isAuthenticated) {
+      console.log('User is not authenticated, redirecting to login page');
+      next('/login');
+    } else {
+      // Kiểm tra xem token có thực sự còn hạn không
+      authService.verifyToken()
+        .then(() => {
+          console.log('Token verified, proceeding to', to.path);
+          next();
+        })
+        .catch(error => {
+          console.log('Token invalid, redirecting to login page');
+          // Xóa token và thông tin user
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          next('/login?expired=true');
+        });
+    }
+  } 
+  // Nếu đang truy cập trang dành cho khách (như login)
+  else if (to.matched.some(record => record.meta.requiresGuest)) {
+    if (isAuthenticated) {
+      // Thêm kiểm tra token trước khi chuyển hướng
+      authService.verifyToken()
+        .then(() => {
+          console.log('User is authenticated, redirecting from login page');
+          next('/');
+        })
+        .catch(error => {
+          console.log('Token invalid but exists, removing token');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          // Tiếp tục đến trang login vì token không hợp lệ
+          next();
+        });
+    } else {
       next();
     }
   } else {
