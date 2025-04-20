@@ -34,6 +34,7 @@ builder.Services.AddSwaggerGen();
 // Get JWT Secret from configuration or environment variable
 var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? 
     Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+
     throw new InvalidOperationException("JWT secret key not found in configuration or environment variables");
 
 // Add JWT Authentication
@@ -51,13 +52,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Add Ocelot
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
+
+// Add Ocelot with cache
 builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
 builder.Services.AddOcelot(builder.Configuration)
-    .AddCacheManager(x => 
-    {
-        x.WithDictionaryHandle();
-    });
+    .AddCacheManager(settings => settings.WithDictionaryHandle());
 
 var app = builder.Build();
 
@@ -68,26 +78,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Use CORS
-app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
 
+// Apply CORS middleware (ph?i ??t tr??c Authentication)
+app.UseCors("AllowAll");
 // Important! Authentication must be added before UseOcelot
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Global request/response modification
-app.Use(async (context, next) =>
-{
-    // Process the request
-    await next();
+app.MapControllers();
 
-    // Add CORS headers explicitly if needed
-    context.Response.Headers.Add("Access-Control-Expose-Headers", 
-        "X-Rate-Limit-Limit, X-Rate-Limit-Remaining, X-Rate-Limit-Reset");
-});
-
+// Cu?i cùng là Ocelot
 await app.UseOcelot();
 
 app.Run();

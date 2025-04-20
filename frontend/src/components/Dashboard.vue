@@ -45,8 +45,7 @@
           >
             Inactive
           </button>
-        </div>
-        
+        </div>        
         <div class="url-list">
           <div v-for="url in filteredUrls" :key="url.id" class="url-item">
             <div class="url-details">

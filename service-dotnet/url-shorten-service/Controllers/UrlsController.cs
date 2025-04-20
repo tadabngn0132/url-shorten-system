@@ -89,6 +89,7 @@ namespace url_shorten_service.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUrl(int id, Url url)
         {
+            // Trong phương thức PutUrl (cập nhật URL)
             if (id != url.Id)
             {
                 return BadRequest();
@@ -104,7 +105,6 @@ namespace url_shorten_service.Controllers
             // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể cập nhật
             string userId = HttpContext.Items["UserId"] as string;
             string userRole = HttpContext.Items["UserRole"] as string;
-
             if (userId != existingUrl.UserId && userRole != "admin")
             {
                 return Forbid("You don't have permission to update this URL");
@@ -122,7 +122,6 @@ namespace url_shorten_service.Controllers
 
                 // Kiểm tra xem shortcode mới đã tồn tại chưa
                 bool shortCodeExists = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode && u.Id != id);
-
                 if (shortCodeExists)
                 {
                     // Trả về lỗi 400 Bad Request với thông báo
@@ -183,8 +182,7 @@ namespace url_shorten_service.Controllers
                 url.UserId = HttpContext.Items["UserId"] as string;
             }
 
-            // Kiểm tra người dúng có nhập custom shortcode chưa
-            // Nếu người dùng cung cấp custom shortcode
+            // Kiểm tra người dùng có nhập custom shortcode chưa
             if (!string.IsNullOrEmpty(url.ShortCode))
             {
                 // Kiểm tra xem shortcode có hợp lệ không (chỉ chứa chữ cái, số, và các ký tự an toàn)
@@ -196,7 +194,6 @@ namespace url_shorten_service.Controllers
 
                 // Kiểm tra xem shortcode đã tồn tại trong database chưa
                 bool isExistingShortCode = await _context.Url.AnyAsync(u => u.ShortCode == url.ShortCode);
-
                 if (isExistingShortCode)
                 {
                     // Trả về lỗi 400 Bad Request với thông báo
@@ -225,9 +222,6 @@ namespace url_shorten_service.Controllers
             url.CreatedAt = DateTime.UtcNow;
             url.ClickCount = 0;
             url.LastAccessed = null;
-
-            // Thiết lập ngày hết hạn mặc định (ví dụ 1 năm) nếu được yêu cầu
-            // url.ExpiryDate = DateTime.UtcNow.AddYears(1);
 
             _context.Url.Add(url);
             await _context.SaveChangesAsync();
