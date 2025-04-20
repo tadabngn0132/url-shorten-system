@@ -38,7 +38,9 @@ export default {
     },
     computed: {
         shortUrl() {
-            return `${this.baseUrl}/${this.url.shortCode}`;
+            // Đảm bảo baseUrl có giá trị đúng
+            const baseUrl = window.location.origin; // Ví dụ: http://localhost:8080
+            return `${baseUrl}/${this.url.shortCode}`;
         }
     },
     methods: {

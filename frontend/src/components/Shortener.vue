@@ -106,9 +106,6 @@ export default {
                     // reset the form fields
                     this.originalUrl = '';
                     this.customCode = '';
-
-                    // refresh the URL list in the parent component
-                    this.$emit('url-shortened', response.data.shortCode);
                 }
             } catch (error) {
                 console.error('Error shortening URL:', error);

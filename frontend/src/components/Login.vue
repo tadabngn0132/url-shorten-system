@@ -59,6 +59,7 @@
 </template>
 
 <script>
+import { authService } from '@/services/api';
 export default {
   name: 'Login',
   data() {
@@ -84,26 +85,32 @@ export default {
         let response;
         
         if (this.isRegister) {
-          // Register using the auth service
           response = await this.$api.authService.register({
             username: this.username,
             email: this.email,
             password: this.password
           });
         } else {
-          // Login using the auth service
           response = await this.$api.authService.login({
             username: this.username,
             password: this.password
           });
         }
         
-        // Success path - token and user data should be stored by the service
-        console.log('Authentication successful');
+        // Kiểm tra response có đúng format không
+        if (!response.data || !response.data.token || !response.data.user) {
+          throw new Error('Invalid server response');
+        }
         
-        // Update Vuex store
-        this.$store.dispatch('setAuthUser', response.user);
-        this.$store.commit('SET_TOKEN', response.token);
+        // Lưu token và user vào localStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Cập nhật Vuex store
+        this.$store.commit('SET_AUTH', {
+          user: response.data.user,
+          token: response.data.token
+        });
         
         // Redirect to home page
         this.$router.push('/');
@@ -111,7 +118,9 @@ export default {
         console.error('Authentication error:', err);
         
         // Display appropriate error message
-        if (err.message) {
+        if (err.response && err.response.data && err.response.data.error) {
+          this.error = err.response.data.error;
+        } else if (err.message) {
           this.error = err.message;
         } else {
           this.error = 'Authentication failed. Please try again.';

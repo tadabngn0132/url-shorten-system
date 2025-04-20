@@ -62,6 +62,10 @@ export default new Vuex.Store({
       state.auth.user = user;
       state.auth.token = token;
       state.auth.isAuthenticated = !!user && !!token;
+
+      // Lưu token và toàn bộ thông tin user vào localStorage
+      if (token) localStorage.setItem('token', token);
+      if (user) localStorage.setItem('userData', JSON.stringify(user));
     },
     SET_TOKEN(state, token) {
       state.auth.token = token
@@ -70,6 +74,10 @@ export default new Vuex.Store({
       state.auth.user = null
       state.auth.token = null
       state.auth.isAuthenticated = false
+
+      // Xóa token và user data từ localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
     },
     REMOVE_URL(state, urlId) {
       state.urls = state.urls.filter(url => url.id !== urlId);
@@ -137,40 +145,34 @@ export default new Vuex.Store({
     // Auth actions
     async login({ commit }, credentials) {
       try {
-
-        commit('SET_LOADING', true)
-        commit('SET_ERROR', null)
-        // Kiểm tra dữ liệu đầu vào
-        if (!credentials || !credentials.username || !credentials.password) {
-          if (credentials && credentials.token && credentials.user) {
-            // Trường hợp đặc biệt: đã có token và user (từ localStorage)
-            commit('SET_AUTH', credentials);
-            return credentials.user;
-          } else {
-            throw new Error('Username and password are required');
-          }
-        }
+        commit('SET_LOADING', true);
+        commit('SET_ERROR', null);
         
         const response = await apiService.authService.login(credentials);
-        const { token, user } = response.data;
         
-        // Gọi AuthService để đăng nhập
-        const result = await AuthService.login(credentials)
-
-        // Cập nhật state từ kết quả đăng nhập
-        commit('SET_AUTH_USER', result.user)
-        commit('SET_TOKEN', result.token)
-        // Update store
-        commit('SET_AUTH', { user, token });
-        
-        return result.user
+        // Đảm bảo response có đúng định dạng
+        if (response.data && response.data.token && response.data.user) {
+          // Lưu vào localStorage
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          
+          // Cập nhật store
+          commit('SET_AUTH', {
+            user: response.data.user,
+            token: response.data.token
+          });
+          
+          return response.data.user;
+        } else {
+          throw new Error('Invalid response format');
+        }
       } catch (error) {
-        console.error('Login error:', error)
-        const errorMessage = error.message || 'Login failed'
-        commit('SET_ERROR', errorMessage)
-        throw new Error(errorMessage)
+        console.error('Login error:', error);
+        const errorMessage = error.response?.data?.error || error.message || 'Login failed';
+        commit('SET_ERROR', errorMessage);
+        throw new Error(errorMessage);
       } finally {
-        commit('SET_LOADING', false)
+        commit('SET_LOADING', false);
       }
     },
     
@@ -248,15 +250,30 @@ export default new Vuex.Store({
       commit('SET_URLS', []);
     },
 
-    setAuthUser({ commit }, user) {
-      const token = localStorage.getItem('token');
-      if (user && token) {
-        commit('SET_AUTH', { user, token });
-        return user;
-      } else {
-        console.warn('Missing user or token for authentication');
-        return null;
-      }
+    // Sửa hàm setAuthUser trong store
+  setAuthUser({ commit }, user) {
+    // Kiểm tra xem user có tồn tại không trước khi sử dụng
+    if (!user) {
+      console.warn('No user data provided to setAuthUser');
+      return null;
     }
+    
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Cả user và token đều tồn tại
+      commit('SET_AUTH', { user, token });
+      return user;
+    } else {
+      console.warn('Missing token for authentication');
+      // Kiểm tra xem có token trong user object không
+      if (user.token) {
+        // Lưu token vào localStorage
+        localStorage.setItem('token', user.token);
+        commit('SET_AUTH', { user, token: user.token });
+        return user;
+      }
+      return null;
+    }
+  }
   }
 })

@@ -156,39 +156,52 @@
         this.error = null;
         
         try {
-          const headers = {};
-          if (this.auth.token) {
-            headers['Authorization'] = `Bearer ${this.auth.token}`;
+          // Kiểm tra xác thực trước khi gọi API
+          if (!this.isAuthenticated) {
+            this.error = 'Authentication required';
+            return; // Không cần chuyển hướng, để navigation guard xử lý
           }
           
-          const response = await axios.get('http://localhost:9999/gateway/auth/profile', { headers });
+          const response = await axios.get('http://localhost:9999/gateway/auth/profile', { 
+            headers: { 'Authorization': `Bearer ${this.auth.token}` }
+          });
+          
           this.profile = response.data;
         } catch (error) {
           console.error('Error fetching profile:', error);
+          
           if (error.response && error.response.data && error.response.data.error) {
             this.error = error.response.data.error;
           } else {
             this.error = 'Failed to load profile. Please try again.';
           }
+          
+          // KHÔNG tự xử lý việc chuyển hướng login tại đây
+          // Để interceptor xử lý việc này
         } finally {
           this.loading = false;
         }
       },
-      
+
       async fetchUrlStats() {
         try {
-          const headers = {};
-          if (this.auth.token) {
-            headers['Authorization'] = `Bearer ${this.auth.token}`;
+          // Kiểm tra user trước khi truy cập thuộc tính id
+          if (!this.isAuthenticated || !this.auth.user) {
+            return; // Không gọi API nếu không có user
           }
           
-          const response = await axios.get('http://localhost:9999/gateway/urls', { headers });
-          const userUrls = response.data.filter(url => url.userId === this.auth.user.id);
+          const response = await axios.get('http://localhost:9999/gateway/urls', {
+            headers: { 'Authorization': `Bearer ${this.auth.token}` }
+          });
           
-          this.urlCount = userUrls.length;
-          this.activeUrlCount = userUrls.filter(url => url.isActive).length;
+          if (response.data && Array.isArray(response.data)) {
+            const userUrls = response.data.filter(url => url.userId === this.auth.user.id);
+            this.urlCount = userUrls.length;
+            this.activeUrlCount = userUrls.filter(url => url.isActive).length;
+          }
         } catch (error) {
           console.error('Error fetching URL stats:', error);
+          // Không xử lý lỗi 401 ở đây, interceptor sẽ xử lý
         }
       },
       
@@ -252,10 +265,9 @@
       }
     },
     created() {
-      // Check if user is authenticated
+      // Kiểm tra xác thực trước khi gọi API
       if (!this.isAuthenticated) {
-        this.$router.push('/login');
-        return;
+        return; // Để navigation guard xử lý chuyển hướng
       }
       
       // Fetch profile data

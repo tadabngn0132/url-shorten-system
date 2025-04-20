@@ -80,11 +80,11 @@ const AuthService = {
             
             // Kiểm tra response
             if (response.data && response.data.token) {
-                // Lưu thông tin xác thực
+                // Lưu thông tin xác thực vào localStorage
                 localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                localStorage.setItem('userData', JSON.stringify(response.data.user));
                 
-                console.log('Login successful');
+                console.log('Login successful, userData saved to localStorage');
                 return response.data;
             } else {
                 console.error('Login response missing token:', response.data);
@@ -214,6 +214,18 @@ const AuthService = {
      */
     isLoggedIn() {
         return !!localStorage.getItem('token');
+    },
+
+    /**
+     * Lấy header xác thực cho các yêu cầu API
+     * @returns {Object} Header xác thực
+     */
+    getAuthHeader() {
+        const token = localStorage.getItem('token');
+        if (token) {
+            return { Authorization: `Bearer ${token}` };
+        }
+        return {};
     }
 };
 

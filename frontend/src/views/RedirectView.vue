@@ -22,8 +22,9 @@ export default {
             const { shortCode } = this.$route.params;
             
             try {
-                // Thay đổi đường dẫn redirect - lấy từ API gateway trực tiếp
-                window.location.href = `${process.env.VUE_APP_API_BASE_URL}/gateway/urls/redirect/${shortCode}`;
+                // Sửa đường dẫn redirect để sử dụng URL tuyệt đối
+                const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
+                window.location.href = `${apiBaseUrl}/gateway/urls/redirect/${shortCode}`;
             } catch (error) {
                 console.error('Error redirecting:', error);
                 this.error = 'Could not redirect. Please try again later.';
