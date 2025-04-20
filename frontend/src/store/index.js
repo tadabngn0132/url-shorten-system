@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
+import AuthService from '@/services/auth-service'
 import apiService from '@/services/api'
-
 
 Vue.use(Vuex)
 
@@ -76,7 +76,7 @@ export default new Vuex.Store({
     }
   },
   actions: {
-    async fetchUrls({ commit, state }) {
+    async fetchUrls({ commit }) {
       commit('SET_LOADING', true)
       try {
         const response = await apiService.urlService.getAllUrls()
@@ -110,7 +110,8 @@ export default new Vuex.Store({
       }
     },
     
-    async deleteUrl({ commit }, urlId) {
+    async deleteUrl({ commit }, id) {
+      commit('SET_LOADING', true)
       try {
         await apiService.urlService.deleteUrl(urlId);
         commit('REMOVE_URL', urlId);
@@ -136,6 +137,9 @@ export default new Vuex.Store({
     // Auth actions
     async login({ commit }, credentials) {
       try {
+
+        commit('SET_LOADING', true)
+        commit('SET_ERROR', null)
         // Kiểm tra dữ liệu đầu vào
         if (!credentials || !credentials.username || !credentials.password) {
           if (credentials && credentials.token && credentials.user) {
@@ -150,38 +154,46 @@ export default new Vuex.Store({
         const response = await apiService.authService.login(credentials);
         const { token, user } = response.data;
         
-        // Save to localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
+        // Gọi AuthService để đăng nhập
+        const result = await AuthService.login(credentials)
+
+        // Cập nhật state từ kết quả đăng nhập
+        commit('SET_AUTH_USER', result.user)
+        commit('SET_TOKEN', result.token)
         // Update store
         commit('SET_AUTH', { user, token });
         
-        return user;
+        return result.user
       } catch (error) {
-        console.error('Login error:', error);
-        throw error;
+        console.error('Login error:', error)
+        const errorMessage = error.message || 'Login failed'
+        commit('SET_ERROR', errorMessage)
+        throw new Error(errorMessage)
+      } finally {
+        commit('SET_LOADING', false)
       }
     },
     
-    async register({ commit, dispatch }, userData) {
+    async register({ commit }, userData) {
       try {
-        const response = await apiService.authService.register(userData)
-        const { token, user } = response.data;
+        commit('SET_LOADING', true)
+        commit('SET_ERROR', null)
         
-        // Save to localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        // Gọi AuthService để đăng ký
+        const result = await AuthService.register(userData)
         
-        // Update store
-        commit('SET_AUTH_USER', user);
-        commit('SET_TOKEN', token);
+        // Cập nhật state từ kết quả đăng ký
+        commit('SET_AUTH_USER', result.user)
+        commit('SET_TOKEN', result.token)
         
-        return user;
+        return result.user
       } catch (error) {
-        console.error('Registration error:', error);
-        const errorMessage = error.response?.data?.error || 'Registration failed'
-        throw new Error(errorMessage);
+        console.error('Registration error:', error)
+        const errorMessage = error.message || 'Registration failed'
+        commit('SET_ERROR', errorMessage)
+        throw new Error(errorMessage)
+      } finally {
+        commit('SET_LOADING', false)
       }
     },
     

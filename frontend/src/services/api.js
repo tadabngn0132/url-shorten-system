@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Get base URL from environment variables or use default
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
 
 export const apiService = axios.create({
@@ -7,7 +8,7 @@ export const apiService = axios.create({
   timeout: 10000
 });
 
-// Interceptor để thêm token
+// Interceptor to add token
 apiService.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');
@@ -21,26 +22,32 @@ apiService.interceptors.request.use(
   }
 );
 
-// Interceptor xử lý response errors
+// Interceptor to handle response errors
 apiService.interceptors.response.use(
   response => response,
   error => {
+    // Handle 401 (Unauthorized)
     if (error.response && error.response.status === 401) {
-      // Xóa token và thông tin user
+      // Remove token if expired
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Cập nhật trạng thái xác thực trong store
-      store.commit('auth/setAuthenticated', false);
-      
-      // Redirect tới trang login
-      router.push('/login?expired=true');
+      // Redirect to login if necessary
+      if (window.location.pathname !== '/login') {
+        window.location = '/login?expired=true';
+      }
     }
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error, please check your connection');
+    }
+    
     return Promise.reject(error);
   }
 );
-  
-// Các methods hỗ trợ
+
+// URL service methods
 export const urlService = {
   getAllUrls: () => apiService.get('/gateway/urls'),
   
@@ -50,9 +57,12 @@ export const urlService = {
   
   updateUrl: (id, urlData) => apiService.put(`/gateway/urls/${id}`, urlData),
   
-  deleteUrl: (id) => apiService.delete(`/gateway/urls/${id}`)
+  deleteUrl: (id) => apiService.delete(`/gateway/urls/${id}`),
+  
+  redirectUrl: (shortCode) => apiService.get(`/gateway/urls/redirect/${shortCode}`)
 };
 
+// Auth service methods
 export const authService = {
   login: (credentials) => apiService.post('/gateway/auth/login', credentials),
   

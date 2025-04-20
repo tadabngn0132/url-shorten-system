@@ -7,8 +7,6 @@
 </template>
 
 <script>
-import axios from 'axios';
-
 export default {
     name: 'RedirectView',
     data() {
@@ -24,8 +22,8 @@ export default {
             const { shortCode } = this.$route.params;
             
             try {
-                // Sử dụng API redirect từ backend
-                window.location.href = `http://localhost:9999/gateway/urls/redirect/${shortCode}`;
+                // Thay đổi đường dẫn redirect - lấy từ API gateway trực tiếp
+                window.location.href = `${process.env.VUE_APP_API_BASE_URL}/gateway/urls/redirect/${shortCode}`;
             } catch (error) {
                 console.error('Error redirecting:', error);
                 this.error = 'Could not redirect. Please try again later.';

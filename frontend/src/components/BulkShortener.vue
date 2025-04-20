@@ -74,7 +74,6 @@
 </template>
 
 <script>
-import axios from 'axios';
 import { mapGetters } from 'vuex';
 
 export default {
@@ -93,99 +92,99 @@ export default {
     },
     methods: {
         async shortenUrls() {
-    if (!this.isAuthenticated) {
-        this.error = 'You must be logged in to use the bulk shortener.';
-        return;
-    }
-
-    this.error = '';
-    this.isSubmitting = true;
-    this.results = [];
-
-    try {
-        // Parse input URLs
-        const urlLines = this.urlsInput.trim().split('\n');
-        
-        if (urlLines.length === 0 || (urlLines.length === 1 && urlLines[0] === '')) {
-            this.error = 'Please enter at least one URL.';
-            this.isSubmitting = false;
-            return;
-        }
-
-        // Process each URL
-        for (const line of urlLines) {
-            if (!line.trim()) continue;
-            
-            let originalUrl = line.trim();
-            let customCode = '';
-            
-            // Check if custom code is provided
-            if (this.generateCustomCodes && line.includes(':')) {
-                const parts = line.split(':');
-                originalUrl = parts[0].trim();
-                customCode = parts[1].trim();
+            if (!this.isAuthenticated) {
+                this.error = 'You must be logged in to use the bulk shortener.';
+                return;
             }
 
-            // Validate URL
-            if (!this.isValidUrl(originalUrl)) {
-                this.results.push({
-                    originalUrl,
-                    shortenedUrl: 'Invalid URL format',
-                    error: true
-                });
-                continue;
-            }
-
-            // Prepare data for API call
-            const payload = {
-                originalUrl,
-                shortCode: customCode,
-                createdAt: new Date().toISOString(),
-                userId: this.$store.state.auth.user.id,
-                isActive: true
-            };
+            this.error = '';
+            this.isSubmitting = true;
+            this.results = [];
 
             try {
-                // Make API call using our API service
-                const response = await this.$api.urlService.createUrl(payload);
+                // Parse input URLs
+                const urlLines = this.urlsInput.trim().split('\n');
+                
+                if (urlLines.length === 0 || (urlLines.length === 1 && urlLines[0] === '')) {
+                    this.error = 'Please enter at least one URL.';
+                    this.isSubmitting = false;
+                    return;
+                }
 
-                if (response.data && response.data.shortCode) {
-                    this.results.push({
+                // Process each URL
+                for (const line of urlLines) {
+                    if (!line.trim()) continue;
+                    
+                    let originalUrl = line.trim();
+                    let customCode = '';
+                    
+                    // Check if custom code is provided
+                    if (this.generateCustomCodes && line.includes(':')) {
+                        const parts = line.split(':');
+                        originalUrl = parts[0].trim();
+                        customCode = parts[1].trim();
+                    }
+
+                    // Validate URL
+                    if (!this.isValidUrl(originalUrl)) {
+                        this.results.push({
+                            originalUrl,
+                            shortenedUrl: 'Invalid URL format',
+                            error: true
+                        });
+                        continue;
+                    }
+
+                    // Prepare data for API call
+                    const payload = {
                         originalUrl,
-                        shortenedUrl: `${window.location.origin}/${response.data.shortCode}`,
-                        error: false
-                    });
+                        shortCode: customCode,
+                        createdAt: new Date().toISOString(),
+                        userId: this.$store.state.auth.user.id,
+                        isActive: true
+                    };
+
+                    try {
+                        // Make API call using our API service
+                        const response = await this.$api.urlService.createUrl(payload);
+
+                        if (response.data && response.data.shortCode) {
+                            this.results.push({
+                                originalUrl,
+                                shortenedUrl: `${window.location.origin}/${response.data.shortCode}`,
+                                error: false
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error shortening URL ${originalUrl}:`, error);
+                        
+                        let errorMessage = 'Failed to shorten URL';
+                        if (error.response && error.response.data && error.response.data.error) {
+                            errorMessage = error.response.data.error;
+                        } else if (error.message) {
+                            errorMessage = error.message;
+                        }
+                        
+                        this.results.push({
+                            originalUrl,
+                            shortenedUrl: errorMessage,
+                            error: true
+                        });
+                    }
                 }
             } catch (error) {
-                console.error(`Error shortening URL ${originalUrl}:`, error);
-                
-                let errorMessage = 'Failed to shorten URL';
+                console.error('Error processing URLs:', error);
                 if (error.response && error.response.data && error.response.data.error) {
-                    errorMessage = error.response.data.error;
+                    this.error = error.response.data.error;
                 } else if (error.message) {
-                    errorMessage = error.message;
+                    this.error = `Error: ${error.message}`;
+                } else {
+                    this.error = 'An unexpected error occurred while processing URLs. Please try again.';
                 }
-                
-                this.results.push({
-                    originalUrl,
-                    shortenedUrl: errorMessage,
-                    error: true
-                });
+            } finally {
+                this.isSubmitting = false;
             }
-        }
-    } catch (error) {
-        console.error('Error processing URLs:', error);
-        if (error.response && error.response.data && error.response.data.error) {
-            this.error = error.response.data.error;
-        } else if (error.message) {
-            this.error = `Error: ${error.message}`;
-        } else {
-            this.error = 'An unexpected error occurred while processing URLs. Please try again.';
-        }
-    } finally {
-        this.isSubmitting = false;
-    }
-},
+        },
         
         isValidUrl(string) {
             try {

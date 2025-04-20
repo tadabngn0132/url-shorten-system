@@ -13,26 +13,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Kiểm tra JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('JWT_SECRET environment variable is not set!');
-    process.exit(1); // Dừng ứng dụng nếu thiếu secret key
-}
+// JWT Secret - Sử dụng giá trị cố định nếu biến môi trường không tồn tại
+const JWT_SECRET = process.env.JWT_SECRET || 't4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL';
 
 // Cấu hình CORS
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-production-domain.com'] 
-        : ['http://localhost:8080', 'http://127.0.0.1:8080', 'http://localhost:8081'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:9999'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400 // 24 giờ
+    credentials: true
 };
 
-// Middleware
 app.use(cors(corsOptions));
+
+// Middleware
 app.use(bodyParser.json());
 
 // Kiểm tra URI MongoDB
@@ -60,7 +54,7 @@ mongoose.connect(MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth')
 // Routes
 app.use('/', authRoutes);
 
-// Start server
+// Khởi động server
 app.listen(PORT, () => {
     console.log(`Authentication service running on port ${PORT}`);
 });

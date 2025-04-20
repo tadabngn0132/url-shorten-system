@@ -7,16 +7,34 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add environment-specific configuration
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+}
+
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// L?y JWT Secret t? c?u hình ho?c bi?n môi tr??ng
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ??
-    Environment.GetEnvironmentVariable("JWT_SECRET") ??
+// Get JWT Secret from configuration or environment variable
+var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? 
+    Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+
     throw new InvalidOperationException("JWT secret key not found in configuration or environment variables");
 
 // Add JWT Authentication
@@ -64,14 +82,13 @@ app.UseHttpsRedirection();
 
 // Apply CORS middleware (ph?i ??t tr??c Authentication)
 app.UseCors("AllowAll");
-
 // Important! Authentication must be added before UseOcelot
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Cu?i cùng là Ocelot
+// Cu?i cÃ¹ng lÃ  Ocelot
 await app.UseOcelot();
 
 app.Run();
