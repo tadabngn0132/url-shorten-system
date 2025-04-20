@@ -46,7 +46,11 @@ export default {
         handleLogout() {
             this.$store.dispatch('logout');
             this.showUserMenu = false;
-            this.$router.push('/');
+            // Chỉ điều hướng về trang chủ nếu không ở trang chủ
+            if (this.$route.path !== '/') {
+                this.$router.push('/');
+            }
+
         },
         closeUserMenu() {
             this.showUserMenu = false;
