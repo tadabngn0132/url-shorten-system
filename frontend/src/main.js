@@ -5,8 +5,12 @@ import router from './router'
 import store from './store'
 import axios from 'axios'
 import AuthService from './services/auth-service'
+import api from './services/api'
 
 Vue.config.productionTip = false
+
+// Thêm $api vào Vue.prototype để có thể truy cập từ mọi component
+Vue.prototype.$api = api;
 
 // Thiết lập interceptor cho axios để tự động thêm token vào header
 axios.interceptors.request.use(
@@ -28,57 +32,59 @@ axios.interceptors.response.use(
   error => {
     // Xử lý lỗi 401 Unauthorized
     if (error.response && error.response.status === 401) {
-      // Xóa token nếu hết hạn
-      AuthService.logout();
+      // Kiểm tra xem đã đăng xuất chưa để tránh xử lý nhiều lần
+      const isLoggedOut = !localStorage.getItem('token');
       
-      // Chuyển hướng về trang login nếu cần
-      if (router.currentRoute.path !== '/login') {
-        router.push('/login?expired=true');
+      if (!isLoggedOut) {
+        // Xóa token nếu hết hạn
+        AuthService.logout();
+        
+        // Chuyển hướng về trang login nếu cần, sử dụng replace để tránh lỗi chuyển hướng
+        if (router.currentRoute.path !== '/login') {
+          router.replace('/login?expired=true').catch(err => {
+            // Bỏ qua lỗi NavigationDuplicated
+            if (err.name !== 'NavigationDuplicated') {
+              console.error('Navigation error:', err);
+            }
+          });
+        }
       }
     }
     return Promise.reject(error);
   }
 );
 
-// Bảo vệ các tuyến đường yêu cầu xác thực
-router.beforeEach(async (to, from, next) => {
-  const publicPages = ['/login', '/', '/about'];
-  const authRequired = !publicPages.includes(to.path);
-  const isLoggedIn = localStorage.getItem('token');
-
-  // Nếu tuyến đường yêu cầu xác thực và người dùng chưa đăng nhập
-  if (authRequired && !isLoggedIn) {
-    next('/login');
-  } else {
-    next();
-  }
-});
-
 // Khởi tạo app sau khi kiểm tra xác thực
 async function initApp() {
   const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
   
-  // Nếu có token lưu trữ, kiểm tra tính hợp lệ
-  if (token) {
+  // Nếu có token và user, thiết lập state
+  if (token && user) {
+    store.commit('SET_AUTH', { user, token });
+    
+    // Kiểm tra token với server
     try {
-      const result = await AuthService.verifyAuth();
-      if (result.isAuthenticated) {
-        store.commit('auth/loginSuccess', result.user);
-      } else {
-        AuthService.logout();
-      }
+      await axios.get('http://localhost:9999/gateway/auth/verify', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
     } catch (error) {
-      console.error('Token verification failed:', error);
+      console.error('Token validation failed:', error);
+      // Token không hợp lệ, đăng xuất
       AuthService.logout();
+      store.commit('LOGOUT');
     }
   }
   
-  // Khởi tạo ứng dụng Vue
-  new Vue({
+  // Khởi tạo ứng dụng Vue và lưu tham chiếu toàn cục
+  const vueApp = new Vue({
     router,
     store,
     render: h => h(App)
   }).$mount('#app');
+  
+  // Lưu instance Vue toàn cục để các dịch vụ có thể truy cập
+  window.app = vueApp;
 }
 
 // Khởi chạy ứng dụng

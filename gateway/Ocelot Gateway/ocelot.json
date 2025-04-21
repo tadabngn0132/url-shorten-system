@@ -86,10 +86,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/profile",
-      "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      }
+      "UpstreamHttpMethod": [ "GET" ]
     },
     {
       "DownstreamPathTemplate": "/verify",

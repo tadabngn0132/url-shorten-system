@@ -59,6 +59,7 @@
 </template>
 
 <script>
+import { authService } from '@/services/api';
 export default {
   name: 'Login',
   data() {
@@ -84,38 +85,43 @@ export default {
         let response;
         
         if (this.isRegister) {
-          // Register using the auth service
-          response = await this.$api.authService.register({
+          // ... code đăng ký ...
+        } else {
+          console.log("Sending login request with:", {
             username: this.username,
-            email: this.email,
             password: this.password
           });
-        } else {
-          // Login using the auth service
+          
           response = await this.$api.authService.login({
             username: this.username,
             password: this.password
           });
+          
+          console.log("Login response:", response.data);
         }
         
-        // Success path - token and user data should be stored by the service
-        console.log('Authentication successful');
+        // Lưu token và user vào localStorage
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Update Vuex store
-        this.$store.dispatch('setAuthUser', response.user);
-        this.$store.commit('SET_TOKEN', response.token);
+        // Kiểm tra xem sau khi lưu có thành công không
+        const savedToken = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        console.log("Saved token:", savedToken);
+        console.log("Saved user:", savedUser);
+        
+        // Cập nhật Vuex store
+        this.$store.commit('SET_AUTH', {
+          user: response.data.user,
+          token: response.data.token
+        });
+        
+        console.log("Vuex store updated, checking state:", this.$store.state.auth);
         
         // Redirect to home page
         this.$router.push('/');
       } catch (err) {
-        console.error('Authentication error:', err);
-        
-        // Display appropriate error message
-        if (err.message) {
-          this.error = err.message;
-        } else {
-          this.error = 'Authentication failed. Please try again.';
-        }
+        // ... xử lý lỗi ...
       } finally {
         this.isLoading = false;
       }

@@ -156,39 +156,52 @@
         this.error = null;
         
         try {
-          const headers = {};
-          if (this.auth.token) {
-            headers['Authorization'] = `Bearer ${this.auth.token}`;
-          }
+          // Debug: In ra token từ localStorage và từ Vuex store
+          const localToken = localStorage.getItem('token');
+          console.log("Token from localStorage:", localToken);
+          console.log("Token from Vuex store:", this.auth.token);
+          console.log("User data:", this.auth.user);
           
-          const response = await axios.get('http://localhost:9999/gateway/auth/profile', { headers });
+          // Sử dụng token trực tiếp từ localStorage thay vì qua API service
+          const response = await axios.get('http://localhost:9999/gateway/auth/profile', {
+            headers: { 'Authorization': `Bearer ${localToken}` }
+          });
+          
+          console.log("Profile response:", response.data);
           this.profile = response.data;
         } catch (error) {
           console.error('Error fetching profile:', error);
-          if (error.response && error.response.data && error.response.data.error) {
-            this.error = error.response.data.error;
-          } else {
-            this.error = 'Failed to load profile. Please try again.';
+          
+          // In ra chi tiết lỗi
+          if (error.response) {
+            console.log("Error status:", error.response.status);
+            console.log("Error data:", error.response.data);
+            console.log("Error headers:", error.response.headers);
           }
+          
+          this.error = 'Failed to load profile. Please try again.';
         } finally {
           this.loading = false;
         }
       },
-      
+
       async fetchUrlStats() {
         try {
-          const headers = {};
-          if (this.auth.token) {
-            headers['Authorization'] = `Bearer ${this.auth.token}`;
+          // Kiểm tra user trước khi truy cập thuộc tính id
+          if (!this.isAuthenticated || !this.auth.user) {
+            return; // Không gọi API nếu không có user
           }
           
-          const response = await axios.get('http://localhost:9999/gateway/urls', { headers });
-          const userUrls = response.data.filter(url => url.userId === this.auth.user.id);
+          const response = await this.$api.urlService.getAllUrls();
           
-          this.urlCount = userUrls.length;
-          this.activeUrlCount = userUrls.filter(url => url.isActive).length;
+          if (response.data && Array.isArray(response.data)) {
+            const userUrls = response.data.filter(url => url.userId === this.auth.user.id);
+            this.urlCount = userUrls.length;
+            this.activeUrlCount = userUrls.filter(url => url.isActive).length;
+          }
         } catch (error) {
           console.error('Error fetching URL stats:', error);
+          // Không xử lý lỗi 401 ở đây, interceptor sẽ xử lý
         }
       },
       
@@ -252,10 +265,9 @@
       }
     },
     created() {
-      // Check if user is authenticated
+      // Kiểm tra xác thực trước khi gọi API
       if (!this.isAuthenticated) {
-        this.$router.push('/login');
-        return;
+        return; // Để navigation guard xử lý chuyển hướng
       }
       
       // Fetch profile data

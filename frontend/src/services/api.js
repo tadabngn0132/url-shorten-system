@@ -1,4 +1,6 @@
 import axios from 'axios';
+import router from '../router'; // Import router
+import store from '../store'; // Import store
 
 // Get base URL from environment variables or use default
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
@@ -28,19 +30,29 @@ apiService.interceptors.response.use(
   error => {
     // Handle 401 (Unauthorized)
     if (error.response && error.response.status === 401) {
-      // Remove token if expired
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Kiểm tra xem đã đăng xuất chưa để tránh xử lý nhiều lần
+      const isLoggedOut = !localStorage.getItem('token');
       
-      // Redirect to login if necessary
-      if (window.location.pathname !== '/login') {
-        window.location = '/login?expired=true';
+      if (!isLoggedOut) {
+        // Remove token if expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Nếu có store thì commit logout
+        if (window.app && window.app.$store) {
+          window.app.$store.commit('LOGOUT');
+        }
+        
+        // Kiểm tra xem có đang ở trang login không để tránh chuyển hướng trùng lặp
+        if (router && router.currentRoute.path !== '/login') {
+          router.push('/login?expired=true').catch(err => {
+            // Bỏ qua lỗi NavigationDuplicated
+            if (err.name !== 'NavigationDuplicated') {
+              console.error('Navigation error:', err);
+            }
+          });
+        }
       }
-    }
-    
-    // Handle network errors
-    if (!error.response) {
-      console.error('Network error, please check your connection');
     }
     
     return Promise.reject(error);

@@ -7,6 +7,7 @@ import Dashboard from '../views/DashboardView.vue'
 import Profile from '../views/ProfileView.vue'
 import BulkShortener from '../views/BulkShortenerView.vue'
 import store from '../store'
+import authService from '../services/auth-service'
 
 Vue.use(VueRouter)
 
@@ -45,7 +46,9 @@ const routes = [
     path: '/login',
     name: 'login',
     component: Login,
-    beforeEnter: requireGuest
+    meta: { 
+      requiresGuest: true 
+    }
   },
   {
     path: '/dashboard',
@@ -60,13 +63,17 @@ const routes = [
     path: '/profile',
     name: 'profile',
     component: Profile,
-    beforeEnter: requireAuth
+    meta: { 
+      requiresAuth: true
+    }
   },
   {
     path: '/bulk-shortener',
     name: 'bulk-shortener',
     component: BulkShortener,
-    beforeEnter: requireAuth
+    meta: { 
+      requiresAuth: true 
+    }
   },
   {
     path: '/:shortCode',
@@ -85,53 +92,51 @@ const router = new VueRouter({
 router.beforeEach((to, from, next) => {
   // Lấy thông tin xác thực hiện tại
   const token = localStorage.getItem('token');
-  const isAuthenticated = !!token; 
+  const isAuthenticated = !!token;
+  
+  // Lấy thông tin user từ localStorage
+  const userData = localStorage.getItem('user');
+  const user = userData ? JSON.parse(userData) : null;
+  const isAdmin = user && user.role === 'admin';
   
   console.log('Navigating from', from.path, 'to', to.path);
-  console.log('Auth state:', isAuthenticated);
+  console.log('Auth state:', isAuthenticated, 'Token:', token ? 'exists' : 'missing');
 
-  // Nếu đang cố truy cập trang yêu cầu đăng nhập
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  // Nếu đang cố truy cập trang yêu cầu quyền admin
+  if (to.matched.some(record => record.meta.requiresAdmin)) {
     if (!isAuthenticated) {
       console.log('User is not authenticated, redirecting to login page');
-      next('/login');
+      // Chuyển hướng với replace để tránh lỗi NavigationDuplicated
+      return next({ path: '/login', replace: true });
+    } else if (!isAdmin) {
+      console.log('User is not admin, redirecting to home page');
+      return next('/');
     } else {
-      // Kiểm tra xem token có thực sự còn hạn không
-      authService.verifyToken()
-        .then(() => {
-          console.log('Token verified, proceeding to', to.path);
-          next();
-        })
-        .catch(error => {
-          console.log('Token invalid, redirecting to login page');
-          // Xóa token và thông tin user
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          next('/login?expired=true');
-        });
+      console.log('Admin access granted for', to.path);
+      return next();
     }
   } 
+  // Nếu trang yêu cầu đăng nhập nhưng không cần quyền admin
+  else if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!isAuthenticated) {
+      console.log('Authentication required for', to.path, 'redirecting to login');
+      // Chuyển hướng với replace để tránh lỗi NavigationDuplicated
+      return next({ path: '/login', replace: true });
+    } else {
+      console.log('User is authenticated, allowing access to', to.path);
+      return next();
+    }
+  }
   // Nếu đang truy cập trang dành cho khách (như login)
   else if (to.matched.some(record => record.meta.requiresGuest)) {
     if (isAuthenticated) {
-      // Thêm kiểm tra token trước khi chuyển hướng
-      authService.verifyToken()
-        .then(() => {
-          console.log('User is authenticated, redirecting from login page');
-          next('/');
-        })
-        .catch(error => {
-          console.log('Token invalid but exists, removing token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          // Tiếp tục đến trang login vì token không hợp lệ
-          next();
-        });
+      console.log('Page is for guests only, redirecting authenticated user to home');
+      return next('/');
     } else {
-      next();
+      return next();
     }
   } else {
-    next();
+    return next();
   }
 });
 
