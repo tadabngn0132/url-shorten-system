@@ -68,28 +68,28 @@ exports.verifyToken = (req, res) => {
 // Get user profile
 exports.getProfile = async (req, res) => {
     try {
-      console.log('getProfile called, user ID:', req.user.id);
-      
-      // Đảm bảo req.user tồn tại
-      if (!req.user || !req.user.id) {
-        console.log('User data missing in request');
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-      
-      const result = await authService.getUserProfile(req.user.id);
-      
-      if (!result.success) {
-        console.log('Failed to get profile:', result.error);
-        return res.status(404).json({ error: result.error });
-      }
-  
-      console.log('Profile retrieved successfully');
-      res.json(result.user);
+        console.log('getProfile called, user ID:', req.user.id);
+        
+        // Đảm bảo req.user tồn tại
+        if (!req.user || !req.user.id) {
+            console.log('User data missing in request');
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+        
+        const result = await authService.getUserProfile(req.user.id);
+        
+        if (!result.success) {
+            console.log('Failed to get profile:', result.error);
+            return res.status(404).json({ error: result.error });
+        }
+
+        console.log('Profile retrieved successfully');
+        res.json(result.user);
     } catch (error) {
-      console.error('Profile controller error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+        console.error('Profile controller error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
-  };
+};
 
 // Change password
 exports.changePassword = async (req, res) => {
