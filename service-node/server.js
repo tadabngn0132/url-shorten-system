@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 5000;
 
 // JWT Secret - Sử dụng giá trị cố định nếu biến môi trường không tồn tại
 const JWT_SECRET = process.env.JWT_SECRET || 't4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL';
+console.log('Using JWT_SECRET:', JWT_SECRET.substring(0, 5) + '...');
 
 // Cấu hình CORS
 const corsOptions = {

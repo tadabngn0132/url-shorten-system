@@ -85,26 +85,30 @@ export default {
         let response;
         
         if (this.isRegister) {
-          response = await this.$api.authService.register({
+          // ... code đăng ký ...
+        } else {
+          console.log("Sending login request with:", {
             username: this.username,
-            email: this.email,
             password: this.password
           });
-        } else {
+          
           response = await this.$api.authService.login({
             username: this.username,
             password: this.password
           });
-        }
-        
-        // Kiểm tra response có đúng format không
-        if (!response.data || !response.data.token || !response.data.user) {
-          throw new Error('Invalid server response');
+          
+          console.log("Login response:", response.data);
         }
         
         // Lưu token và user vào localStorage
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Kiểm tra xem sau khi lưu có thành công không
+        const savedToken = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        console.log("Saved token:", savedToken);
+        console.log("Saved user:", savedUser);
         
         // Cập nhật Vuex store
         this.$store.commit('SET_AUTH', {
@@ -112,19 +116,12 @@ export default {
           token: response.data.token
         });
         
+        console.log("Vuex store updated, checking state:", this.$store.state.auth);
+        
         // Redirect to home page
         this.$router.push('/');
       } catch (err) {
-        console.error('Authentication error:', err);
-        
-        // Display appropriate error message
-        if (err.response && err.response.data && err.response.data.error) {
-          this.error = err.response.data.error;
-        } else if (err.message) {
-          this.error = err.message;
-        } else {
-          this.error = 'Authentication failed. Please try again.';
-        }
+        // ... xử lý lỗi ...
       } finally {
         this.isLoading = false;
       }

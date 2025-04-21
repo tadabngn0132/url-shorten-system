@@ -82,7 +82,7 @@ const AuthService = {
             if (response.data && response.data.token) {
                 // Lưu thông tin xác thực vào localStorage
                 localStorage.setItem('token', response.data.token);
-                localStorage.setItem('userData', JSON.stringify(response.data.user));
+                localStorage.setItem('user', JSON.stringify(response.data.user));
                 
                 console.log('Login successful, userData saved to localStorage');
                 return response.data;
@@ -161,6 +161,8 @@ const AuthService = {
     logout() {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        // Đảm bảo loại bỏ cả userData nếu có
+        localStorage.removeItem('userData');
         console.log('User logged out');
     },
 

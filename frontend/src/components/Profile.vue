@@ -156,28 +156,30 @@
         this.error = null;
         
         try {
-          // Kiểm tra xác thực trước khi gọi API
-          if (!this.isAuthenticated) {
-            this.error = 'Authentication required';
-            return; // Không cần chuyển hướng, để navigation guard xử lý
-          }
+          // Debug: In ra token từ localStorage và từ Vuex store
+          const localToken = localStorage.getItem('token');
+          console.log("Token from localStorage:", localToken);
+          console.log("Token from Vuex store:", this.auth.token);
+          console.log("User data:", this.auth.user);
           
-          const response = await axios.get('http://localhost:9999/gateway/auth/profile', { 
-            headers: { 'Authorization': `Bearer ${this.auth.token}` }
+          // Sử dụng token trực tiếp từ localStorage thay vì qua API service
+          const response = await axios.get('http://localhost:9999/gateway/auth/profile', {
+            headers: { 'Authorization': `Bearer ${localToken}` }
           });
           
+          console.log("Profile response:", response.data);
           this.profile = response.data;
         } catch (error) {
           console.error('Error fetching profile:', error);
           
-          if (error.response && error.response.data && error.response.data.error) {
-            this.error = error.response.data.error;
-          } else {
-            this.error = 'Failed to load profile. Please try again.';
+          // In ra chi tiết lỗi
+          if (error.response) {
+            console.log("Error status:", error.response.status);
+            console.log("Error data:", error.response.data);
+            console.log("Error headers:", error.response.headers);
           }
           
-          // KHÔNG tự xử lý việc chuyển hướng login tại đây
-          // Để interceptor xử lý việc này
+          this.error = 'Failed to load profile. Please try again.';
         } finally {
           this.loading = false;
         }
@@ -190,9 +192,7 @@
             return; // Không gọi API nếu không có user
           }
           
-          const response = await axios.get('http://localhost:9999/gateway/urls', {
-            headers: { 'Authorization': `Bearer ${this.auth.token}` }
-          });
+          const response = await this.$api.urlService.getAllUrls();
           
           if (response.data && Array.isArray(response.data)) {
             const userUrls = response.data.filter(url => url.userId === this.auth.user.id);

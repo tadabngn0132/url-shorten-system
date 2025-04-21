@@ -62,22 +62,23 @@ export default new Vuex.Store({
       state.auth.user = user;
       state.auth.token = token;
       state.auth.isAuthenticated = !!user && !!token;
-
+  
       // Lưu token và toàn bộ thông tin user vào localStorage
       if (token) localStorage.setItem('token', token);
-      if (user) localStorage.setItem('userData', JSON.stringify(user));
+      if (user) localStorage.setItem('user', JSON.stringify(user));
     },
     SET_TOKEN(state, token) {
       state.auth.token = token
     },
     LOGOUT(state) {
-      state.auth.user = null
-      state.auth.token = null
-      state.auth.isAuthenticated = false
-
+      state.auth.user = null;
+      state.auth.token = null;
+      state.auth.isAuthenticated = false;
+  
       // Xóa token và user data từ localStorage
       localStorage.removeItem('token');
-      localStorage.removeItem('userData');
+      localStorage.removeItem('user');
+      localStorage.removeItem('userData'); // Để đảm bảo xóa cả userData nếu có
     },
     REMOVE_URL(state, urlId) {
       state.urls = state.urls.filter(url => url.id !== urlId);
