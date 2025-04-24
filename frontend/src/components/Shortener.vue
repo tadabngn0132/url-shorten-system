@@ -1,3 +1,4 @@
+<!-- frontend/src/components/Shortener.vue -->
 <template>
     <div class="shortener">
         <h1>URL Shortener</h1>
@@ -54,81 +55,70 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters } from 'vuex';
+import exportApis from '@/services/api/exportApis';
 
 export default {
     name: 'Shortener',
     data() {
         return {
             originalUrl: '',
-            shortenedUrl: null,
             customCode: '',
-            error: '',
             isSubmitting: false,
+            shortenedUrl: null,
+            error: ''
         };
     },
     computed: {
-        ...mapGetters(['isAuthenticated']),
-        ...mapState(['auth'])
+        ...mapGetters(['isAuthenticated'])
     },
     methods: {
         async shortenUrl() {
             this.error = '';
-            this.shortenedUrl = '';
-
-            if (!this.originalUrl) {
-                this.error = 'Please enter a URL to shorten.';
-                return;
-            }
-
+            this.isSubmitting = true;
+            
             try {
-                this.isSubmitting = true;
-
-                const payload = {
+                // Chuẩn bị dữ liệu
+                const urlData = {
                     originalUrl: this.originalUrl,
-                    shortCode: this.customCode || "",
-                    createdAt: new Date().toISOString(),
-                    userId: this.isAuthenticated ? this.auth.user.id : "anonymous", // Sử dụng ID người dùng nếu đã đăng nhập
+                    shortCode: this.customCode || '',
                     isActive: true,
+                    userId: "guest" // Gán ID mặc định cho khách
                 };
-
-                // Thêm header xác thực nếu người dùng đã đăng nhập
-                const headers = {};
-                if (this.isAuthenticated && this.auth.token) {
-                    headers['Authorization'] = `Bearer ${this.auth.token}`;
-                }
-
-                const response = await axios.post('http://localhost:9999/gateway/urls', payload, { headers });
-
-                if (response.data && response.data.shortCode) {
-                    this.shortenedUrl = `${window.location.origin}/${response.data.shortCode}`;
-                    // reset the form fields
+                
+                // Gọi API
+                const response = await exportApis.urls.createUrl(urlData);
+                
+                if (response && response.shortCode) {
+                    // Lưu URL ID vào localStorage cho khách
+                    if (!this.isAuthenticated) {
+                        const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
+                        guestUrlIds.push(response.id);
+                        localStorage.setItem('guestUrlIds', JSON.stringify(guestUrlIds));
+                    }
+                    
+                    // Hiển thị kết quả
+                    this.shortenedUrl = `${window.location.origin}/${response.shortCode}`;
                     this.originalUrl = '';
                     this.customCode = '';
                 }
             } catch (error) {
                 console.error('Error shortening URL:', error);
-                
-                // Hiển thị thông báo lỗi từ backend nếu có
-                if (error.response && error.response.data && error.response.data.error) {
-                    this.error = error.response.data.error;
-                } else {
-                    this.error = 'Failed to shorten the URL. Please try again.';
-                }
+                this.error = error.userMessage || 'Failed to shorten URL. Please try again.';
             } finally {
                 this.isSubmitting = false;
             }
         },
+        
         copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('Shortened URL copied to clipboard!');
+                alert('URL đã được sao chép vào clipboard!');
             }).catch(err => {
-                console.error('Failed to copy: ', err);
+                console.error('Failed to copy:', err);
             });
-        },
+        }
     }
-}
+};
 </script>
 
 <style scoped>

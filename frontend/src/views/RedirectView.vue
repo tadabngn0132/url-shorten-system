@@ -20,14 +20,13 @@ export default {
     methods: {
         async redirectToOriginalUrl() {
             const { shortCode } = this.$route.params;
+            const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
             
             try {
-                // Sửa đường dẫn redirect để sử dụng URL tuyệt đối
-                const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
                 window.location.href = `${apiBaseUrl}/gateway/urls/redirect/${shortCode}`;
             } catch (error) {
                 console.error('Error redirecting:', error);
-                this.error = 'Could not redirect. Please try again later.';
+                this.error = 'Không thể chuyển hướng. Vui lòng thử lại sau.';
             }
         }
     }

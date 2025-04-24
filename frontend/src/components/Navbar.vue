@@ -37,20 +37,22 @@ export default {
         };
     },
     computed: {
-        ...mapGetters(['isAuthenticated', 'currentUser'])
+        ...mapGetters(['isAuthenticated']),
+        currentUser() {
+            return this.$store.state.auth.user;
+        }
     },
     methods: {
         toggleUserMenu() {
             this.showUserMenu = !this.showUserMenu;
         },
         handleLogout() {
-            this.$store.dispatch('logout');
+            this.$store.dispatch('auth/logout');
             this.showUserMenu = false;
-            // Chỉ điều hướng về trang chủ nếu không ở trang chủ
+            
             if (this.$route.path !== '/') {
                 this.$router.push('/');
             }
-
         },
         closeUserMenu() {
             this.showUserMenu = false;
@@ -88,6 +90,7 @@ export default {
 .nav-links {
     display: flex;
     align-items: center;
+    text-align: center;
     gap: 20px;
 }
 
