@@ -22,68 +22,89 @@ namespace url_shorten_service.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            // Đối với các requests đến API của người dùng khách, chúng ta cho phép truy cập
-            // Nhưng đối với các chức năng quản lý URL (PUT, DELETE), chúng ta có thể kiểm tra xác thực
-            string path = context.Request.Path.Value.ToLower();
-            string method = context.Request.Method;
+            //string path = context.Request.Path.Value.ToLower();
+            //string method = context.Request.Method;
 
-            // Cho phép requests GET và POST cơ bản mà không cần xác thực
-            // Nhưng yêu cầu xác thực cho chỉnh sửa/xóa URL
-            bool requireAuth = 
-                (method == "PUT" || method == "DELETE") || 
-                (path.Contains("/admin") || path.Contains("/dashboard"));
+            //bool requireAuth =
+            //    (method == "PUT" || method == "DELETE") ||
+            //    (path.Contains("/admin") || path.Contains("/dashboard"));
 
-            if (!requireAuth)
-            {
-                await _next(context);
-                return;
-            }
+            //if (!requireAuth)
+            //{
+            //    await _next(context);
+            //    return;
+            //}
 
-            string authHeader = context.Request.Headers["Authorization"];
-            if (authHeader == null || !authHeader.StartsWith("Bearer "))
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync("Authentication required");
-                return;
-            }
+            //string authHeader = context.Request.Headers["Authorization"];
+            //if (authHeader == null || !authHeader.StartsWith("Bearer "))
+            //{
+            //    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            //    await context.Response.WriteAsync("Authentication required");
+            //    return;
+            //}
 
-            string token = authHeader.Substring("Bearer ".Length).Trim();
+            //string token = authHeader.Substring("Bearer ".Length).Trim();
 
-            try
-            {
-                // Xác minh token JWT
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.ASCII.GetBytes(
-                    _configuration["JwtSettings:Secret"] ?? 
-                    Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
-                    throw new InvalidOperationException("JWT secret key not found"));
-                
-                tokenHandler.ValidateToken(token, new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero
-                }, out var validatedToken);
+            //try
+            //{
+            //    // Sử dụng cùng JWT secret với Node service
+            //    var tokenHandler = new JwtSecurityTokenHandler();
+            //    var key = Encoding.ASCII.GetBytes(
+            //        _configuration["JwtSettings:Secret"] ??
+            //        Environment.GetEnvironmentVariable("JWT_SECRET") ??
+            //        "t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL");
 
-                var jwtToken = (JwtSecurityToken)validatedToken;
-                string userId = jwtToken.Claims.First(x => x.Type == "id").Value;
+            //    tokenHandler.ValidateToken(token, new TokenValidationParameters
+            //    {
+            //        ValidateIssuerSigningKey = true,
+            //        IssuerSigningKey = new SymmetricSecurityKey(key),
+            //        ValidateIssuer = false,
+            //        ValidateAudience = false,
+            //        ClockSkew = TimeSpan.Zero
+            //    }, out var validatedToken);
 
-                // Thêm thông tin người dùng vào HttpContext để các controllers có thể sử dụng
-                context.Items["UserId"] = userId;
-                context.Items["Username"] = jwtToken.Claims.First(x => x.Type == "username").Value;
-                context.Items["UserRole"] = jwtToken.Claims.First(x => x.Type == "role").Value;
-            }
-            catch (Exception ex)
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync($"Invalid token: {ex.Message}");
-                return;
-            }
+            //    var jwtToken = (JwtSecurityToken)validatedToken;
 
-            // Tiếp tục pipeline request
+            //    // Cố gắng lấy userId và xử lý an toàn
+            //    string userId = null;
+            //    try
+            //    {
+            //        userId = jwtToken.Claims.FirstOrDefault(x => x.Type == "id")?.Value;
+            //    }
+            //    catch { /* Bỏ qua lỗi */ }
+
+            //    // Thêm thông tin người dùng vào HttpContext
+            //    context.Items["UserId"] = userId;
+
+            //    // Lấy username an toàn
+            //    try
+            //    {
+            //        context.Items["Username"] = jwtToken.Claims.FirstOrDefault(x => x.Type == "username")?.Value ?? "unknown";
+            //    }
+            //    catch
+            //    {
+            //        context.Items["Username"] = "unknown";
+            //    }
+
+            //    // Lấy role an toàn
+            //    try
+            //    {
+            //        context.Items["UserRole"] = jwtToken.Claims.FirstOrDefault(x => x.Type == "role")?.Value ?? "user";
+            //    }
+            //    catch
+            //    {
+            //        context.Items["UserRole"] = "user";
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            //    await context.Response.WriteAsync($"Invalid token: {ex.Message}");
+            //    return;
+            //}
+
             await _next(context);
+            return;
         }
     }
 
