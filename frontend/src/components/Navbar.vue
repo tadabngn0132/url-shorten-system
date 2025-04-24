@@ -90,6 +90,7 @@ export default {
 .nav-links {
     display: flex;
     align-items: center;
+    text-align: center;
     gap: 20px;
 }
 

@@ -12,7 +12,7 @@ export default new Vuex.Store({
     },
     // Thêm getters toàn cục để dễ truy cập
     getters: {
-        isAuthenticated: state => state.isAuthenticated,
-        currentUser: state => state.user
+        isAuthenticated: state => state.auth.isAuthenticated,
+        currentUser: state => state.auth.user
     }
 });

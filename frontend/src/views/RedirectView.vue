@@ -7,13 +7,11 @@
 </template>
 
 <script>
-import exportApis from '@/services/api/exportApis';
-
 export default {
     name: 'RedirectView',
     data() {
         return {
-        error: null
+            error: null
         };
     },
     created() {
@@ -22,16 +20,10 @@ export default {
     methods: {
         async redirectToOriginalUrl() {
             const { shortCode } = this.$route.params;
+            const apiBaseUrl = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
             
             try {
-                // Sử dụng redirectUrl từ API mới
-                const response = await exportApis.urls.redirectUrl(shortCode);
-                
-                if (response && response.originalUrl) {
-                    window.location.href = response.originalUrl;
-                } else {
-                    throw new Error('URL không hợp lệ');
-                }
+                window.location.href = `${apiBaseUrl}/gateway/urls/redirect/${shortCode}`;
             } catch (error) {
                 console.error('Error redirecting:', error);
                 this.error = 'Không thể chuyển hướng. Vui lòng thử lại sau.';

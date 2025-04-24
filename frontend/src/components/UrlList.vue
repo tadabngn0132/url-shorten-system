@@ -59,48 +59,62 @@ export default {
             try {
                 this.loading = true;
                 
-                const response = await exportApis.urls.getAllUrls();
-                
-                // Nếu đã đăng nhập, hiển thị tất cả URLs
-                // Nếu là khách, chỉ hiển thị URLs từ phiên hiện tại (lưu trong localStorage)
                 if (this.isAuthenticated) {
-                    // Lọc URLs của người dùng hiện tại
+                    // Chỉ gọi API nếu người dùng đã đăng nhập
+                    const response = await exportApis.urls.getAllUrls();
+                    // Lọc URL cho người dùng hiện tại
                     this.urls = response.filter(url => url.userId === this.auth.user.id);
                 } else {
-                    // Lấy danh sách URLs của khách từ localStorage
-                    const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds')) || [];
-                    this.urls = response.filter(url => guestUrlIds.includes(url.id));
+                    // Nếu chưa đăng nhập, không gọi API, chỉ lấy URL từ localStorage nếu có
+                    const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
+                    this.urls = []; // Danh sách rỗng cho người dùng chưa đăng nhập
+                    
+                    // Hoặc có thể xử lý để lấy URL của khách từ localStorage
+                    // Nhưng không gọi getAllUrls API
                 }
             } catch (error) {
                 console.error('Error fetching URLs:', error);
+                this.urls = [];
             } finally {
                 this.loading = false;
             }
         },
+        
         async removeUrl(urlId) {
-            if (confirm('Bạn có chắc chắn muốn xóa URL này?')) {
+            if (confirm('Are you sure you want to delete this URL?')) {
                 try {
-                    await this.$store.dispatch('urls/deleteUrl', urlId);
-                    // Cập nhật danh sách URLs sau khi xóa
-                    this.fetchUrls();
-                } catch (error) {
-                    if (!error.response || error.response.status !== 401) {
-                        console.error('Error deleting URL:', error);
+                    if (this.isAuthenticated) {
+                        // Delete from server if authenticated
+                        await exportApis.urls.deleteUrl(urlId);
                     }
+                    
+                    // Remove from local list
+                    this.urls = this.urls.filter(url => url.id !== urlId);
+                    
+                    // Also remove from local storage if guest
+                    if (!this.isAuthenticated) {
+                        const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
+                        const updatedIds = guestUrlIds.filter(id => id !== urlId);
+                        localStorage.setItem('guestUrlIds', JSON.stringify(updatedIds));
+                    }
+                } catch (error) {
+                    console.error('Error deleting URL:', error);
+                    alert('Failed to delete URL. Please try again.');
                 }
             }
         },
-        // Phương thức để lưu ID URL mới của khách
+        
+        // Save a new URL ID to guest storage
         saveGuestUrlId(urlId) {
             if (!this.isAuthenticated) {
-                const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds')) || [];
+                const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
                 guestUrlIds.push(urlId);
                 localStorage.setItem('guestUrlIds', JSON.stringify(guestUrlIds));
             }
         }
     },
     watch: {
-        // Theo dõi sự thay đổi trong trạng thái xác thực và làm mới danh sách URLs
+        // Refresh URLs when auth state changes
         isAuthenticated() {
             this.fetchUrls();
         }

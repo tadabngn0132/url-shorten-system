@@ -1,3 +1,4 @@
+<!-- frontend/src/components/Shortener.vue -->
 <template>
     <div class="shortener">
         <h1>URL Shortener</h1>
@@ -58,72 +59,63 @@ import { mapGetters } from 'vuex';
 import exportApis from '@/services/api/exportApis';
 
 export default {
-    name: 'Login',
+    name: 'Shortener',
     data() {
         return {
-        isRegister: false,
-        username: '',
-        email: '',
-        password: '',
-        error: '',
-        isLoading: false,
-        originalUrl: '',
-        customCode: '',
-        isSubmitting: false,
-        shortenedUrl: null
+            originalUrl: '',
+            customCode: '',
+            isSubmitting: false,
+            shortenedUrl: null,
+            error: ''
         };
     },
     computed: {
         ...mapGetters(['isAuthenticated'])
     },
     methods: {
-        toggleForm() {
-            this.isRegister = !this.isRegister;
+        async shortenUrl() {
             this.error = '';
-        },
-        async handleSubmit() {
-            this.error = '';
-            this.isLoading = true;
+            this.isSubmitting = true;
             
             try {
-                let response;
+                // Chuẩn bị dữ liệu
+                const urlData = {
+                    originalUrl: this.originalUrl,
+                    shortCode: this.customCode || '',
+                    isActive: true,
+                    userId: "guest" // Gán ID mặc định cho khách
+                };
                 
-                if (this.isRegister) {
-                response = await exportApis.auths.register({
-                    username: this.username,
-                    email: this.email,
-                    password: this.password
-                });
-                } else {
-                response = await exportApis.auths.login({
-                    username: this.username,
-                    password: this.password
-                });
+                // Gọi API
+                const response = await exportApis.urls.createUrl(urlData);
+                
+                if (response && response.shortCode) {
+                    // Lưu URL ID vào localStorage cho khách
+                    if (!this.isAuthenticated) {
+                        const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
+                        guestUrlIds.push(response.id);
+                        localStorage.setItem('guestUrlIds', JSON.stringify(guestUrlIds));
+                    }
+                    
+                    // Hiển thị kết quả
+                    this.shortenedUrl = `${window.location.origin}/${response.shortCode}`;
+                    this.originalUrl = '';
+                    this.customCode = '';
                 }
-                
-                // Lưu token và user vào localStorage
-                localStorage.setItem('token', response.token);
-                localStorage.setItem('user', JSON.stringify(response.user));
-                
-                // Cập nhật Vuex store
-                this.$store.commit('auth/SET_AUTH', {
-                    user: response.user,
-                    token: response.token
-                });
-                
-                // Redirect to home page
-                this.$router.push('/');
-            } catch (err) {
-                console.error('Auth error:', err);
-                this.error = err.userMessage || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+            } catch (error) {
+                console.error('Error shortening URL:', error);
+                this.error = error.userMessage || 'Failed to shorten URL. Please try again.';
             } finally {
-                this.isLoading = false;
+                this.isSubmitting = false;
             }
-        }
-    },
-    created() {
-        if (this.$route.query.expired) {
-            this.error = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        },
+        
+        copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('URL đã được sao chép vào clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
         }
     }
 };

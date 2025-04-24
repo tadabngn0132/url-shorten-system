@@ -1,3 +1,4 @@
+// frontend/src/services/api/apiClient.js
 import axios from 'axios'
 import router from '@/router'
 import store from '@/store'
@@ -34,14 +35,27 @@ const createHeaders = () => {
     return headers;
 };
 
-// Cấu hình client API chung
-const createApiClient = (path) => {
-    const client = axios.create({
-        baseURL: API_BASE_URL + (path || ''),
-        timeout: 30000,
-        headers: createHeaders()
-    });
+// Create API clients with proper axios instances
+const mainApiClient = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 30000,
+    headers: createHeaders()
+});
 
+const urlApiClient = axios.create({
+    baseURL: `${API_BASE_URL}/gateway/urls`,
+    timeout: 30000,
+    headers: createHeaders()
+});
+
+const authApiClient = axios.create({
+    baseURL: `${API_BASE_URL}/gateway/auth`,
+    timeout: 30000,
+    headers: createHeaders()
+});
+
+// Configure request interceptors for all clients
+[mainApiClient, urlApiClient, authApiClient].forEach(client => {
     // Request interceptor
     client.interceptors.request.use(
         config => {
@@ -58,40 +72,34 @@ const createApiClient = (path) => {
     client.interceptors.response.use(
         response => response,
         error => {
-        // Xử lý lỗi 401 (Unauthorized)
-        if (error.response && error.response.status === 401) {
-            const isLoggedOut = !getToken();
-            
-            if (!isLoggedOut) {
-                // Xóa token và đăng xuất
-                clearToken();
-            
-                // Chuyển hướng về trang đăng nhập nếu cần
-                if (router.currentRoute.path !== '/login') {
-                    router.replace('/login?expired=true').catch(err => {
-                        if (err.name !== 'NavigationDuplicated') {
-                            console.error('Navigation error:', err);
-                        }
-                    });
+            // Xử lý lỗi 401 (Unauthorized)
+            if (error.response && error.response.status === 401) {
+                const isLoggedOut = !getToken();
+                
+                if (!isLoggedOut) {
+                    // Xóa token và đăng xuất
+                    clearToken();
+                
+                    // Chuyển hướng về trang đăng nhập nếu cần
+                    if (router.currentRoute.path !== '/login') {
+                        router.replace('/login?expired=true').catch(err => {
+                            if (err.name !== 'NavigationDuplicated') {
+                                console.error('Navigation error:', err);
+                            }
+                        });
+                    }
                 }
             }
-        }
-        
-        return Promise.reject(error);
+            
+            return Promise.reject(error);
         }
     );
-};
-
-// Tạp các client riêng cho từng loại API
-const mainApiClient = createApiClient('');
-const urlApiClient = createApiClient('/gateway/urls');
-const authApiClient = createApiClient('/gateway/auth');
+});
 
 export default {
     mainApiClient,
     urlApiClient,
     authApiClient,
-
     getToken,
     clearToken
 };
