@@ -120,6 +120,7 @@
 </template>
 
 <script>
+import exportApis from '@/services/api/exportApis';
 import { mapState, mapGetters } from 'vuex';
 
 export default {
@@ -133,12 +134,13 @@ export default {
     };
   },
   computed: {
-    ...mapState(['auth']),
+    ...mapState({
+      auth: state => state.auth
+    }),
     ...mapGetters(['isAuthenticated']),
     
     urls() {
-      // If we have Vuex store with URLs, use it
-      return this.$store.state.urls || [];
+      return this.$store.state.urls.urls || [];
     },
     activeUrls() {
       return this.urls.filter(url => url.isActive);
@@ -156,9 +158,8 @@ export default {
     async fetchUrls() {
       this.loading = true;
       try {
-        // Use the API service instead of direct axios calls
-        const response = await this.$api.urlService.getAllUrls();
-        this.$store.commit('SET_URLS', response.data);
+        const response = await exportApis.urls.getAllUrls();
+        this.$store.commit('urls/SET_URLS', response);
       } catch (error) {
         console.error('Error fetching URLs:', error);
       } finally {
@@ -174,7 +175,7 @@ export default {
     },
     copyToClipboard(text) {
       navigator.clipboard.writeText(text).then(() => {
-        alert('URL copied to clipboard!');
+        alert('URL đã được sao chép vào clipboard!');
       }).catch(err => {
         console.error('Failed to copy:', err);
       });
@@ -183,8 +184,7 @@ export default {
       try {
         const updatedUrl = { ...url, isActive: !url.isActive };
         
-        // Use the API service
-        await this.$api.urlService.updateUrl(url.id, updatedUrl);
+        await exportApis.urls.updateUrl(url.id, updatedUrl);
         
         // Update the URL in the store
         this.fetchUrls();
@@ -198,8 +198,7 @@ export default {
     },
     async saveUrlChanges() {
       try {
-        // Use the API service
-        await this.$api.urlService.updateUrl(this.editingUrl.id, this.editingUrl);
+        await exportApis.urls.updateUrl(this.editingUrl.id, this.editingUrl);
         
         // Refresh URLs
         this.fetchUrls();
@@ -210,16 +209,21 @@ export default {
       } catch (error) {
         console.error('Error saving URL changes:', error);
         
-        if (error.response && error.response.data && error.response.data.error) {
-          alert(error.response.data.error);
+        if (error.userMessage) {
+          alert(error.userMessage);
         } else {
-          alert('Failed to save changes. Please try again.');
+          alert('Không thể lưu thay đổi. Vui lòng thử lại.');
         }
       }
     },
     async deleteUrl(id) {
-      if (confirm('Are you sure you want to delete this URL?')) {
-        await this.$store.dispatch('deleteUrl', id);
+      if (confirm('Bạn có chắc chắn muốn xóa URL này?')) {
+        try {
+          await exportApis.urls.deleteUrl(id);
+          this.$store.commit('urls/REMOVE_URL', id);
+        } catch (error) {
+          console.error('Error deleting URL:', error);
+        }
       }
     }
   },

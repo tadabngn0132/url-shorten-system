@@ -9,5 +9,10 @@ export default new Vuex.Store({
     modules: {
         auth,
         urls
+    },
+    // Thêm getters toàn cục để dễ truy cập
+    getters: {
+        isAuthenticated: state => state.isAuthenticated,
+        currentUser: state => state.user
     }
 });

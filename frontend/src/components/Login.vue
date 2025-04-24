@@ -59,7 +59,9 @@
 </template>
 
 <script>
-import { authService } from '@/services/api';
+import { mapState } from 'vuex';
+import exportApis from '@/services/api/exportApis';
+
 export default {
   name: 'Login',
   data() {
@@ -85,52 +87,41 @@ export default {
         let response;
         
         if (this.isRegister) {
-          // ... code đăng ký ...
+          response = await exportApis.auths.register({
+            username: this.username,
+            email: this.email,
+            password: this.password
+          });
         } else {
-          console.log("Sending login request with:", {
+          response = await exportApis.auths.login({
             username: this.username,
             password: this.password
           });
-          
-          response = await this.$api.authService.login({
-            username: this.username,
-            password: this.password
-          });
-          
-          console.log("Login response:", response.data);
         }
         
         // Lưu token và user vào localStorage
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        // Kiểm tra xem sau khi lưu có thành công không
-        const savedToken = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        console.log("Saved token:", savedToken);
-        console.log("Saved user:", savedUser);
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
         
         // Cập nhật Vuex store
-        this.$store.commit('SET_AUTH', {
-          user: response.data.user,
-          token: response.data.token
+        this.$store.commit('auth/SET_AUTH', {
+          user: response.user,
+          token: response.token
         });
-        
-        console.log("Vuex store updated, checking state:", this.$store.state.auth);
         
         // Redirect to home page
         this.$router.push('/');
       } catch (err) {
-        // ... xử lý lỗi ...
+        console.error('Auth error:', err);
+        this.error = err.userMessage || 'Đã xảy ra lỗi. Vui lòng thử lại.';
       } finally {
         this.isLoading = false;
       }
     }
   },
-  // Check query params for expired session message
   created() {
     if (this.$route.query.expired) {
-      this.error = 'Your session has expired. Please login again.';
+      this.error = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
     }
   }
 };

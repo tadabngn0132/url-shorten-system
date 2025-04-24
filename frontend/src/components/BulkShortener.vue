@@ -74,6 +74,7 @@
 </template>
 
 <script>
+import exportApis from '@/services/api/exportApis';
 import { mapGetters } from 'vuex';
 
 export default {
@@ -93,7 +94,7 @@ export default {
     methods: {
         async shortenUrls() {
             if (!this.isAuthenticated) {
-                this.error = 'You must be logged in to use the bulk shortener.';
+                this.error = 'Bạn phải đăng nhập để sử dụng tính năng rút gọn hàng loạt.';
                 return;
             }
 
@@ -106,7 +107,7 @@ export default {
                 const urlLines = this.urlsInput.trim().split('\n');
                 
                 if (urlLines.length === 0 || (urlLines.length === 1 && urlLines[0] === '')) {
-                    this.error = 'Please enter at least one URL.';
+                    this.error = 'Vui lòng nhập ít nhất một URL.';
                     this.isSubmitting = false;
                     return;
                 }
@@ -129,7 +130,7 @@ export default {
                     if (!this.isValidUrl(originalUrl)) {
                         this.results.push({
                             originalUrl,
-                            shortenedUrl: 'Invalid URL format',
+                            shortenedUrl: 'Định dạng URL không hợp lệ',
                             error: true
                         });
                         continue;
@@ -145,24 +146,22 @@ export default {
                     };
 
                     try {
-                        // Make API call using our API service
-                        const response = await this.$api.urlService.createUrl(payload);
+                        // Sử dụng API mới
+                        const response = await exportApis.urls.createUrl(payload);
 
-                        if (response.data && response.data.shortCode) {
+                        if (response && response.shortCode) {
                             this.results.push({
                                 originalUrl,
-                                shortenedUrl: `${window.location.origin}/${response.data.shortCode}`,
+                                shortenedUrl: `${window.location.origin}/${response.shortCode}`,
                                 error: false
                             });
                         }
                     } catch (error) {
                         console.error(`Error shortening URL ${originalUrl}:`, error);
                         
-                        let errorMessage = 'Failed to shorten URL';
-                        if (error.response && error.response.data && error.response.data.error) {
-                            errorMessage = error.response.data.error;
-                        } else if (error.message) {
-                            errorMessage = error.message;
+                        let errorMessage = 'Không thể rút gọn URL';
+                        if (error.userMessage) {
+                            errorMessage = error.userMessage;
                         }
                         
                         this.results.push({
@@ -174,13 +173,7 @@ export default {
                 }
             } catch (error) {
                 console.error('Error processing URLs:', error);
-                if (error.response && error.response.data && error.response.data.error) {
-                    this.error = error.response.data.error;
-                } else if (error.message) {
-                    this.error = `Error: ${error.message}`;
-                } else {
-                    this.error = 'An unexpected error occurred while processing URLs. Please try again.';
-                }
+                this.error = error.userMessage || 'Đã xảy ra lỗi không mong muốn khi xử lý URL. Vui lòng thử lại.';
             } finally {
                 this.isSubmitting = false;
             }
@@ -197,7 +190,7 @@ export default {
         
         copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('URL copied to clipboard!');
+                alert('URL đã được sao chép vào clipboard!');
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
@@ -207,12 +200,12 @@ export default {
             const successfulUrls = this.results.filter(r => !r.error).map(r => r.shortenedUrl).join('\n');
             
             if (!successfulUrls) {
-                alert('No valid URLs to copy.');
+                alert('Không có URL hợp lệ để sao chép.');
                 return;
             }
             
             navigator.clipboard.writeText(successfulUrls).then(() => {
-                alert('All URLs copied to clipboard!');
+                alert('Tất cả URL đã được sao chép vào clipboard!');
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
@@ -220,7 +213,7 @@ export default {
         
         downloadCsv() {
             // Create CSV content
-            let csvContent = 'Original URL,Shortened URL\n';
+            let csvContent = 'URL gốc,URL rút gọn\n';
             
             this.results.forEach(result => {
                 if (!result.error) {

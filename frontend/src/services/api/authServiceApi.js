@@ -28,27 +28,27 @@ const handleError = fn => (...params) =>
 
 export const authService = {
     register: handleError(async (userData) => {
-        const res = await apiClient.authApiClient.post('register', userData);
+        const res = await apiClient.authApiClient.post('/register', userData);
         return res.data;
     }),
 
     login: handleError(async (credentials) => {
-        const res = await apiClient.authApiClient.post('login', credentials);
+        const res = await apiClient.authApiClient.post('/login', credentials);
         return res.data;
     }),
 
     verifyToken: handleError(async () => {
-        const res = await apiClient.authApiClient.get('verify');
+        const res = await apiClient.authApiClient.get('/verify');
         return res.data;
     }),
 
     getProfile: handleError(async () => {
-        const res = await apiClient.authApiClient.get('profile');
+        const res = await apiClient.authApiClient.get('/profile');
         return res.data;
     }),
 
     changePassword: handleError (async (passwordData) => {
-        const res = await apiClient.authApiClient.post('change-password', passwordData);
+        const res = await apiClient.authApiClient.post('/change-password', passwordData);
         return res.data;
     })
 }

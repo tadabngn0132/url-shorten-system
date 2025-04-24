@@ -30,9 +30,9 @@
 </template>
 
 <script>
-import axios from 'axios';
+import exportApis from '@/services/api/exportApis';
 import UrlItem from './UrlItem.vue';
-import { mapGetters, mapState, mapActions } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 
 export default {
     name: 'UrlList',
@@ -47,9 +47,9 @@ export default {
     },
     computed: {
         ...mapGetters(['isAuthenticated']),
-        ...mapState(['auth', {
-            urls: state => state.urls.urls
-        }])
+        ...mapState({
+            auth: state => state.auth
+        })
     },
     created() {
         this.fetchUrls();
@@ -59,23 +59,17 @@ export default {
             try {
                 this.loading = true;
                 
-                // Thêm header xác thực nếu đã đăng nhập
-                const headers = {};
-                if (this.isAuthenticated && this.auth.token) {
-                    headers['Authorization'] = `Bearer ${this.auth.token}`;
-                }
-                
-                const response = await axios.get('http://localhost:9999/gateway/urls', { headers });
+                const response = await exportApis.urls.getAllUrls();
                 
                 // Nếu đã đăng nhập, hiển thị tất cả URLs
                 // Nếu là khách, chỉ hiển thị URLs từ phiên hiện tại (lưu trong localStorage)
                 if (this.isAuthenticated) {
-                    // Lọc URLs của người dùng hiện tại nếu cần
-                    this.urls = response.data.filter(url => url.userId === this.auth.user.id);
+                    // Lọc URLs của người dùng hiện tại
+                    this.urls = response.filter(url => url.userId === this.auth.user.id);
                 } else {
-                    // Lấy danh sách URLs của khách từ localStorage hoặc sử dụng danh sách trống
+                    // Lấy danh sách URLs của khách từ localStorage
                     const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds')) || [];
-                    this.urls = response.data.filter(url => guestUrlIds.includes(url.id));
+                    this.urls = response.filter(url => guestUrlIds.includes(url.id));
                 }
             } catch (error) {
                 console.error('Error fetching URLs:', error);
@@ -85,28 +79,17 @@ export default {
         },
         async removeUrl(urlId) {
             if (confirm('Bạn có chắc chắn muốn xóa URL này?')) {
-            try {
-                await this.deleteUrlAction(urlId);
-                this.$notify({
-                    type: 'success',
-                    title: 'Thành công',
-                    text: 'URL đã được xóa thành công'
-                });
-            } catch (error) {
-                if (!error.response || error.response.status !== 401) {
-                    this.$notify({
-                    type: 'error',
-                    title: 'Lỗi',
-                    text: 'Không thể xóa URL. Vui lòng thử lại sau.'
-                    });
+                try {
+                    await this.$store.dispatch('urls/deleteUrl', urlId);
+                    // Cập nhật danh sách URLs sau khi xóa
+                    this.fetchUrls();
+                } catch (error) {
+                    if (!error.response || error.response.status !== 401) {
+                        console.error('Error deleting URL:', error);
+                    }
                 }
-                // Không cần xử lý lỗi 401 vì interceptor đã xử lý
             }
-        }
         },
-        ...mapActions({
-            deleteUrlAction: 'deleteUrl'
-        }),
         // Phương thức để lưu ID URL mới của khách
         saveGuestUrlId(urlId) {
             if (!this.isAuthenticated) {

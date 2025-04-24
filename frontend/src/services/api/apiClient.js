@@ -3,7 +3,21 @@ import router from '@/router'
 import store from '@/store'
 
 // Lấy base URL từ biến môi trường hoặc sử dụng mặc định
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999/';
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999';
+
+// Hàm lấy token
+const getToken = () => localStorage.getItem('token');
+
+// Hàm xóa token và đăng xuất
+const clearToken = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Cập nhật store nếu có thể
+    if (store) {
+        store.commit('auth/LOGOUT');
+    }
+};
 
 // Cấu hình header chung cho cả trường hợp có token hoặc không
 const createHeaders = () => {
@@ -70,23 +84,14 @@ const createApiClient = (path) => {
 
 // Tạp các client riêng cho từng loại API
 const mainApiClient = createApiClient('');
-const urlApiClient = createApiClient('gateway/urls/');
-const authApiClient = createApiClient('gateway/auth/');
-
-const setUpAuthToken = (token) => {
-    if (token) {
-        localStorage.setItem('token', token);
-    } else {
-        localStorage.removeItem('token');
-    }
-}
+const urlApiClient = createApiClient('/gateway/urls');
+const authApiClient = createApiClient('/gateway/auth');
 
 export default {
     mainApiClient,
     urlApiClient,
     authApiClient,
 
-    setUpAuthToken,
-    getToken: () => localStorage.getItem('token'),
-    clearToken: () => localStorage.removeItem('token')
+    getToken,
+    clearToken
 };

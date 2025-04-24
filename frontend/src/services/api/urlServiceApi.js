@@ -28,12 +28,12 @@ const handleError = fn => (...params) =>
 
 export const urlService = {
     getAllUrls : handleError(async () => {
-        const res = await apiClient.urlApiClient.get('');
+        const res = await apiClient.urlApiClient.get();
         return res.data;
     }),
 
     getUrl: handleError(async (id) => {
-        const res = await apiClient.urlApiClient.get(`${id}`);
+        const res = await apiClient.urlApiClient.get(`/${id}`);
         return res.data;
     }),
 
@@ -43,17 +43,17 @@ export const urlService = {
     }),
 
     updateUrl: handleError(async (id, urlData) => {
-        const res = await apiClient.urlApiClient.put(`${id}`, urlData);
+        const res = await apiClient.urlApiClient.put(`/${id}`, urlData);
         return res.data;
     }),
 
     deleteUrl: handleError(async (id) => {
-        const res = await apiClient.urlApiClient.delete(`${id}`);
+        const res = await apiClient.urlApiClient.delete(`/${id}`);
         return res.data;
     }),
     
     redirectUrl: handleError(async (shortCode) => {
-        const res = await apiClient.urlApiClient.get(`redirect/${shortCode}`);
+        const res = await apiClient.urlApiClient.get(`/redirect/${shortCode}`);
         return res.data;
     }),
 

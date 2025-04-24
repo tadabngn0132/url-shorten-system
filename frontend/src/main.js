@@ -1,58 +1,17 @@
-// frontend/src/main.js
 import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
 import axios from 'axios'
-import AuthService from './services/auth-service'
-import api from './services/api'
+import exportApis from './services/api/exportApis'
 
 Vue.config.productionTip = false
 
-// Thêm $api vào Vue.prototype để có thể truy cập từ mọi component
-Vue.prototype.$api = api;
-
-// Thiết lập interceptor cho axios để tự động thêm token vào header
-axios.interceptors.request.use(
-  config => {
-    const authHeader = AuthService.getAuthHeader();
-    if (authHeader.Authorization) {
-      config.headers.Authorization = authHeader.Authorization;
-    }
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-);
-
-// Xử lý lỗi response toàn cục
-axios.interceptors.response.use(
-  response => response,
-  error => {
-    // Xử lý lỗi 401 Unauthorized
-    if (error.response && error.response.status === 401) {
-      // Kiểm tra xem đã đăng xuất chưa để tránh xử lý nhiều lần
-      const isLoggedOut = !localStorage.getItem('token');
-      
-      if (!isLoggedOut) {
-        // Xóa token nếu hết hạn
-        AuthService.logout();
-        
-        // Chuyển hướng về trang login nếu cần, sử dụng replace để tránh lỗi chuyển hướng
-        if (router.currentRoute.path !== '/login') {
-          router.replace('/login?expired=true').catch(err => {
-            // Bỏ qua lỗi NavigationDuplicated
-            if (err.name !== 'NavigationDuplicated') {
-              console.error('Navigation error:', err);
-            }
-          });
-        }
-      }
-    }
-    return Promise.reject(error);
-  }
-);
+// Thiết lập interceptor cho axios
+const token = localStorage.getItem('token');
+if (token) {
+  axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
 
 // Khởi tạo app sau khi kiểm tra xác thực
 async function initApp() {
@@ -61,22 +20,21 @@ async function initApp() {
   
   // Nếu có token và user, thiết lập state
   if (token && user) {
-    store.commit('SET_AUTH', { user, token });
+    store.commit('auth/SET_AUTH', { user, token });
     
     // Kiểm tra token với server
     try {
-      await axios.get('http://localhost:9999/gateway/auth/verify', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await exportApis.auths.verifyToken();
     } catch (error) {
       console.error('Token validation failed:', error);
       // Token không hợp lệ, đăng xuất
-      AuthService.logout();
-      store.commit('LOGOUT');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      store.commit('auth/LOGOUT');
     }
   }
   
-  // Khởi tạo ứng dụng Vue và lưu tham chiếu toàn cục
+  // Khởi tạo ứng dụng Vue
   const vueApp = new Vue({
     router,
     store,

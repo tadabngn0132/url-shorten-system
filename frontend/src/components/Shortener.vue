@@ -54,81 +54,79 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { mapGetters, mapState } from 'vuex';
+import { mapGetters } from 'vuex';
+import exportApis from '@/services/api/exportApis';
 
 export default {
-    name: 'Shortener',
+    name: 'Login',
     data() {
         return {
-            originalUrl: '',
-            shortenedUrl: null,
-            customCode: '',
-            error: '',
-            isSubmitting: false,
+        isRegister: false,
+        username: '',
+        email: '',
+        password: '',
+        error: '',
+        isLoading: false,
+        originalUrl: '',
+        customCode: '',
+        isSubmitting: false,
+        shortenedUrl: null
         };
     },
     computed: {
-        ...mapGetters(['isAuthenticated']),
-        ...mapState(['auth'])
+        ...mapGetters(['isAuthenticated'])
     },
     methods: {
-        async shortenUrl() {
+        toggleForm() {
+            this.isRegister = !this.isRegister;
             this.error = '';
-            this.shortenedUrl = '';
-
-            if (!this.originalUrl) {
-                this.error = 'Please enter a URL to shorten.';
-                return;
-            }
-
+        },
+        async handleSubmit() {
+            this.error = '';
+            this.isLoading = true;
+            
             try {
-                this.isSubmitting = true;
-
-                const payload = {
-                    originalUrl: this.originalUrl,
-                    shortCode: this.customCode || "",
-                    createdAt: new Date().toISOString(),
-                    userId: this.isAuthenticated ? this.auth.user.id : "anonymous", // Sử dụng ID người dùng nếu đã đăng nhập
-                    isActive: true,
-                };
-
-                // Thêm header xác thực nếu người dùng đã đăng nhập
-                const headers = {};
-                if (this.isAuthenticated && this.auth.token) {
-                    headers['Authorization'] = `Bearer ${this.auth.token}`;
-                }
-
-                const response = await axios.post('http://localhost:9999/gateway/urls', payload, { headers });
-
-                if (response.data && response.data.shortCode) {
-                    this.shortenedUrl = `${window.location.origin}/${response.data.shortCode}`;
-                    // reset the form fields
-                    this.originalUrl = '';
-                    this.customCode = '';
-                }
-            } catch (error) {
-                console.error('Error shortening URL:', error);
+                let response;
                 
-                // Hiển thị thông báo lỗi từ backend nếu có
-                if (error.response && error.response.data && error.response.data.error) {
-                    this.error = error.response.data.error;
+                if (this.isRegister) {
+                response = await exportApis.auths.register({
+                    username: this.username,
+                    email: this.email,
+                    password: this.password
+                });
                 } else {
-                    this.error = 'Failed to shorten the URL. Please try again.';
+                response = await exportApis.auths.login({
+                    username: this.username,
+                    password: this.password
+                });
                 }
+                
+                // Lưu token và user vào localStorage
+                localStorage.setItem('token', response.token);
+                localStorage.setItem('user', JSON.stringify(response.user));
+                
+                // Cập nhật Vuex store
+                this.$store.commit('auth/SET_AUTH', {
+                    user: response.user,
+                    token: response.token
+                });
+                
+                // Redirect to home page
+                this.$router.push('/');
+            } catch (err) {
+                console.error('Auth error:', err);
+                this.error = err.userMessage || 'Đã xảy ra lỗi. Vui lòng thử lại.';
             } finally {
-                this.isSubmitting = false;
+                this.isLoading = false;
             }
-        },
-        copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Shortened URL copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
-        },
+        }
+    },
+    created() {
+        if (this.$route.query.expired) {
+            this.error = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        }
     }
-}
+};
 </script>
 
 <style scoped>

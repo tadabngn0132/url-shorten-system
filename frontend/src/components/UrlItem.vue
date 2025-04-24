@@ -23,7 +23,6 @@
 </template>
 
 <script>
-
 export default {
     name: 'UrlItem',
     props: {
@@ -38,15 +37,14 @@ export default {
     },
     computed: {
         shortUrl() {
-            // Đảm bảo baseUrl có giá trị đúng
-            const baseUrl = window.location.origin; // Ví dụ: http://localhost:8080
+            const baseUrl = window.location.origin;
             return `${baseUrl}/${this.url.shortCode}`;
         }
     },
     methods: {
         copyToClipboard(url) {
             navigator.clipboard.writeText(url).then(() => {
-                alert('URL copied to clipboard!');
+                alert('URL đã được sao chép vào clipboard!');
             }).catch(err => {
                 console.error('Failed to copy: ', err);
             });
@@ -60,7 +58,6 @@ export default {
         }
     }
 }
-
 </script>
 
 <style scoped>
