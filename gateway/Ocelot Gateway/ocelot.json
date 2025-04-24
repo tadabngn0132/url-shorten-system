@@ -199,9 +199,6 @@
       "FileCacheOptions": {
         "Region": "url-cache",
         "TtlSeconds": 15
-      },
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
       }
     }
   ]

@@ -239,15 +239,6 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
-            // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể xóa
-            string userId = HttpContext.Items["UserId"] as string;
-            string userRole = HttpContext.Items["UserRole"] as string;
-
-            if (userId != url.UserId && userRole != "admin")
-            {
-                return Forbid("You don't have permission to delete this URL");
-            }
-
             _context.Url.Remove(url);
             await _context.SaveChangesAsync();
 
