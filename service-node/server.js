@@ -52,7 +52,7 @@ mongoose.connect(MONGODB_URI || 'mongodb://localhost:27017/url-shortener-auth')
     }
 });
 
-// Routes
+// Routes - Restore to original configuration
 app.use('/', authRoutes);
 
 // Khởi động server

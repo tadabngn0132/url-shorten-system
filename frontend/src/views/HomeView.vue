@@ -1,7 +1,7 @@
 <template>
   <div class="home">
-    <Shortener @url-shortened="refreshUrls" />
-    <UrlList :key="refreshKey" />
+    <Shortener @url-shortened="handleUrlShortened" />
+    <UrlList ref="urlList" />
   </div>
 </template>
 
@@ -15,15 +15,12 @@ export default {
     Shortener,
     UrlList
   },
-  data() {
-    return {
-      refreshKey: 0
-    }
-  },
   methods: {
-    refreshUrls() {
-      // Force refresh component technique
-      this.refreshKey += 1;
+    handleUrlShortened(newUrl) {
+      // Truyền dữ liệu URL mới trực tiếp đến UrlList component
+      if (this.$refs.urlList && newUrl) {
+        this.$refs.urlList.addNewUrl(newUrl);
+      }
     }
   }
 }

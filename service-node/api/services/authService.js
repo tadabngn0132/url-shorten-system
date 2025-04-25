@@ -172,9 +172,12 @@ class AuthService {
 
     // Generate JWT token
     generateToken(user) {
+        // Use environment variable or fallback to a default secret
+        const jwtSecret = process.env.JWT_SECRET || 't4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL';
+        
         return jwt.sign(
             { id: user._id, username: user.username, role: user.role },
-            process.env.JWT_SECRET,
+            jwtSecret,
             { expiresIn: '24h' }
         );
     }

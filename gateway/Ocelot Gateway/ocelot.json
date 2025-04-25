@@ -200,6 +200,83 @@
         "Region": "url-cache",
         "TtlSeconds": 15
       }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/transfer-ownership",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/transfer-ownership",
+      "UpstreamHttpMethod": [ "POST" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/dashboard-stats/{urlId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/dashboard-stats/{urlId}",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "DelegatingHandlers": [],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/dashboard-stats",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/dashboard-stats",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "DelegatingHandlers": [],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
     }
   ]
 }

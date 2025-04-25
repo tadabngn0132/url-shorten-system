@@ -65,12 +65,30 @@ export default {
                     // Lọc URL cho người dùng hiện tại
                     this.urls = response.filter(url => url.userId === this.auth.user.id);
                 } else {
-                    // Nếu chưa đăng nhập, không gọi API, chỉ lấy URL từ localStorage nếu có
+                    // Nếu chưa đăng nhập, lấy ID URL từ localStorage
                     const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
-                    this.urls = []; // Danh sách rỗng cho người dùng chưa đăng nhập
                     
-                    // Hoặc có thể xử lý để lấy URL của khách từ localStorage
-                    // Nhưng không gọi getAllUrls API
+                    // Nếu có ID URL của khách, thực hiện các request riêng lẻ để lấy thông tin
+                    if (guestUrlIds.length > 0) {
+                        const guestUrls = [];
+                        
+                        // Lấy thông tin URL cho từng ID
+                        for (const urlId of guestUrlIds) {
+                            try {
+                                const urlData = await exportApis.urls.getUrlById(urlId);
+                                if (urlData) {
+                                    guestUrls.push(urlData);
+                                }
+                            } catch (err) {
+                                console.error(`Error fetching URL with ID ${urlId}:`, err);
+                            }
+                        }
+                        
+                        // Cập nhật danh sách URLs
+                        this.urls = guestUrls;
+                    } else {
+                        this.urls = [];
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching URLs:', error);
@@ -111,6 +129,14 @@ export default {
                 guestUrlIds.push(urlId);
                 localStorage.setItem('guestUrlIds', JSON.stringify(guestUrlIds));
             }
+        },
+        
+        // Add a new URL to the list without refetching everything
+        addNewUrl(urlData) {
+            if (!urlData) return;
+            
+            // Add to beginning of list for better visibility
+            this.urls.unshift(urlData);
         }
     },
     watch: {

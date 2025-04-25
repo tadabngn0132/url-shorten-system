@@ -37,6 +37,12 @@ export const urlService = {
         const res = await apiClient.urlApiClient.get(`/${id}`);
         return res.data;
     }),
+    
+    // Alias for getUrl to match the method name used in UrlList.vue
+    getUrlById: handleError(async (id) => {
+        const res = await apiClient.urlApiClient.get(`/${id}`);
+        return res.data;
+    }),
 
     createUrl: handleError(async (urlData) => {
         const res = await apiClient.urlApiClient.post('', urlData);
@@ -47,6 +53,15 @@ export const urlService = {
         const res = await apiClient.urlApiClient.put(`/${id}`, urlData);
         return res.data;
     }),
+    
+    // Add new method to transfer ownership of URLs
+    transferUrlOwnership: handleError(async (urlIds, newUserId) => {
+        const res = await apiClient.urlApiClient.post('/transfer-ownership', {
+            urlIds: urlIds,
+            newUserId: newUserId
+        });
+        return res.data;
+    }),
 
     deleteUrl: handleError(async (id) => {
         const res = await apiClient.urlApiClient.delete(`/${id}`);
@@ -55,6 +70,17 @@ export const urlService = {
 
     getUrlStats: handleError(async () => {
         const res = await apiClient.urlApiClient.get('/stats');
+        return res.data;
+    }),
+    
+    getDashboardStats: handleError(async (urlId = null) => {
+        let endpoint = '/dashboard-stats';
+        if (urlId) {
+            endpoint = `/dashboard-stats/${urlId}`;
+        }
+        console.log('getDashboardStats calling endpoint:', endpoint);
+        console.log('With full URL:', apiClient.urlApiClient.defaults.baseURL + endpoint);
+        const res = await apiClient.urlApiClient.get(endpoint);
         return res.data;
     }),
 

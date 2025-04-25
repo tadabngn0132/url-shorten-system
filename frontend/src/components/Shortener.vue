@@ -102,6 +102,11 @@ export default {
                     
                     // Hiển thị kết quả
                     this.shortenedUrl = `${window.location.origin}/${response.shortCode}`;
+                    
+                    // Phát ra sự kiện với dữ liệu URL mới để cập nhật UrlList
+                    this.$emit('url-shortened', response);
+                    
+                    // Reset form
                     this.originalUrl = '';
                     this.customCode = '';
                 }

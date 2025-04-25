@@ -87,35 +87,134 @@ export default {
         let response;
         
         if (this.isRegister) {
-          response = await exportApis.auths.register({
-            username: this.username,
-            email: this.email,
-            password: this.password
-          });
+          try {
+            response = await exportApis.auths.register({
+              username: this.username,
+              email: this.email,
+              password: this.password
+            });
+            
+            console.log('Register response success:', response);
+            
+            // Successful registration with valid response
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            this.$store.commit('auth/SET_AUTH', {
+              user: response.user,
+              token: response.token
+            });
+            
+            // Transfer guest URLs to the new registered user
+            await this.transferGuestUrls(response.user.id);
+            
+            this.$router.push('/');
+          } catch (registerError) {
+            console.error('Register specific error:', registerError);
+            
+            // Special handling for the case where user is created but response has an error
+            if (registerError && registerError.response && 
+                registerError.response.status === 400 && 
+                registerError.userMessage === 'Failed to register user') {
+              
+              // Show a more helpful message and redirect to login
+              this.isRegister = false;
+              this.error = 'Registration may have succeeded. Please try logging in with your credentials.';
+              return;
+            }
+            
+            // Rethrow for general error handling
+            throw registerError;
+          }
         } else {
+          // Login flow
           response = await exportApis.auths.login({
             username: this.username,
             password: this.password
           });
+          
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+          
+          this.$store.commit('auth/SET_AUTH', {
+            user: response.user,
+            token: response.token
+          });
+          
+          // Transfer guest URLs to the logged in user
+          await this.transferGuestUrls(response.user.id);
+          
+          this.$router.push('/');
         }
-        
-        // Lưu token và user vào localStorage
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        
-        // Cập nhật Vuex store
-        this.$store.commit('auth/SET_AUTH', {
-          user: response.user,
-          token: response.token
-        });
-        
-        // Redirect to home page
-        this.$router.push('/');
       } catch (err) {
         console.error('Auth error:', err);
         this.error = err.userMessage || 'Đã xảy ra lỗi. Vui lòng thử lại.';
       } finally {
         this.isLoading = false;
+      }
+    },
+    
+    // New method to transfer guest URLs to registered user
+    async transferGuestUrls(userId) {
+      try {
+        // Get guest URL IDs from localStorage
+        const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
+        
+        console.log('Guest URL IDs found in localStorage:', guestUrlIds);
+        
+        if (guestUrlIds.length > 0) {
+          console.log(`Attempting to transfer ${guestUrlIds.length} guest URLs to user ${userId}`);
+          
+          // Two approaches: 
+          // 1. Bulk transfer using new API endpoint (preferred if backend supports it)
+          try {
+            console.log('Calling transfer-ownership API with payload:', { urlIds: guestUrlIds, newUserId: userId });
+            const result = await exportApis.urls.transferUrlOwnership(guestUrlIds, userId);
+            console.log('Transfer ownership API response:', result);
+            
+            // Clear guest URLs from localStorage after transfer
+            localStorage.removeItem('guestUrlIds');
+            console.log('Cleared guest URLs from localStorage after successful transfer');
+          } catch (bulkError) {
+            console.error('Bulk transfer failed, details:', bulkError);
+            
+            // 2. Fallback: Update each URL individually
+            console.log('Falling back to individual URL updates');
+            const updatePromises = guestUrlIds.map(async (urlId) => {
+              try {
+                console.log(`Fetching URL with ID ${urlId}`);
+                const urlData = await exportApis.urls.getUrlById(urlId);
+                
+                if (urlData) {
+                  console.log(`Updating URL ${urlId} owner from "${urlData.userId}" to "${userId}"`);
+                  urlData.userId = userId;
+                  await exportApis.urls.updateUrl(urlId, urlData);
+                  console.log(`URL ${urlId} ownership updated successfully`);
+                  return true;
+                }
+                return false;
+              } catch (err) {
+                console.error(`Failed to update URL ${urlId}:`, err);
+                return false;
+              }
+            });
+            
+            const results = await Promise.all(updatePromises);
+            const successCount = results.filter(r => r).length;
+            
+            if (successCount > 0) {
+              console.log(`Successfully transferred ${successCount} URLs via individual updates`);
+              // Clear guest URLs from localStorage after transfer
+              localStorage.removeItem('guestUrlIds');
+              console.log('Cleared guest URLs from localStorage after successful individual transfers');
+            }
+          }
+        } else {
+          console.log('No guest URLs found in localStorage to transfer');
+        }
+      } catch (error) {
+        console.error('Error in transferGuestUrls:', error);
+        // Don't throw error - we don't want to interrupt the login flow
       }
     }
   },

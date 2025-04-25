@@ -1,252 +1,301 @@
 <template>
   <div class="dashboard">
-    <h1>User Dashboard</h1>
+    <h1>Analytics Dashboard</h1>
     
-    <div class="dashboard-stats">
-      <div class="stat-card">
-        <h3>Total URLs</h3>
-        <p class="stat-number">{{ urls.length }}</p>
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <!-- URL Selector -->
+      <div class="url-selector">
+        <label for="url-select">Select URL:</label>
+        <select id="url-select" v-model="selectedUrlId" @change="fetchDashboardData">
+          <option value="">All URLs</option>
+          <option v-for="url in urls" :key="url.id" :value="url.id">
+            {{ url.shortCode }} ({{ url.originalUrl | truncate(30) }})
+          </option>
+        </select>
       </div>
       
-      <div class="stat-card">
-        <h3>Active URLs</h3>
-        <p class="stat-number">{{ activeUrls.length }}</p>
-      </div>
-    </div>
-    
-    <div class="dashboard-actions">
-      <h2>Your URLs</h2>
-      <div v-if="loading" class="loading">
-        Loading URLs...
-      </div>
-      <div v-else-if="urls.length === 0" class="no-urls">
-        No URLs shortened yet.
-      </div>
-      <div v-else class="url-management">
-        <div class="url-filters">
+      <!-- View Type Selector -->
+      <div class="view-type-selector">
+        <label>View Type:</label>
+        <div class="toggle-buttons">
           <button 
-            @click="currentFilter = 'all'" 
-            :class="{ active: currentFilter === 'all' }"
-            class="filter-btn"
+            :class="['toggle-btn', { active: viewType === 'charts' }]" 
+            @click="viewType = 'charts'"
           >
-            All
+            Charts
           </button>
           <button 
-            @click="currentFilter = 'active'" 
-            :class="{ active: currentFilter === 'active' }"
-            class="filter-btn"
+            :class="['toggle-btn', { active: viewType === 'tables' }]" 
+            @click="viewType = 'tables'"
           >
-            Active
+            Tables
           </button>
-          <button 
-            @click="currentFilter = 'inactive'" 
-            :class="{ active: currentFilter === 'inactive' }"
-            class="filter-btn"
-          >
-            Inactive
-          </button>
-        </div>        
-        <div class="url-list">
-          <div v-for="url in filteredUrls" :key="url.id" class="url-item">
-            <div class="url-details">
-              <div class="original-url">
-                <h4>Original URL:</h4>
-                <p>{{ url.originalUrl }}</p>
-              </div>
-              <div class="short-url">
-                <h4>Shortened URL:</h4>
-                <a v-if="url.isActive === true" :href="getFullShortUrl(url)" target="_blank">{{ getFullShortUrl(url) }}</a>
-                <span v-else class="disable-link">{{ getFullShortUrl(url) }}</span>
-                <button @click="copyToClipboard(getFullShortUrl(url))" class="btn-copy">
-                  Copy
-                </button>
-              </div>
-              <div class="created-at">
-                <small>Created at: {{ formatDate(url.createdAt) }}</small>
-              </div>
-            </div>
-            <div class="url-actions">
-              <div class="url-status">
-                <label class="switch">
-                  <input 
-                    type="checkbox" 
-                    :checked="url.isActive" 
-                    @change="toggleUrlStatus(url)"
-                  >
-                  <span class="slider"></span>
-                </label>
-                <span class="status-label">{{ url.isActive ? 'Active' : 'Inactive' }}</span>
-              </div>
-              <button @click="editUrl(url)" class="btn-edit">Edit</button>
-              <button @click="deleteUrl(url.id)" class="btn-delete">Delete</button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
     
-    <!-- Edit URL Modal -->
-    <div v-if="showEditModal" class="edit-modal">
-      <div class="modal-content">
-        <span class="close-modal" @click="showEditModal = false">&times;</span>
-        <h2>Edit URL</h2>
+    <!-- Loading State -->
+    <div v-if="loading" class="loading">
+      <p>Loading dashboard data...</p>
+    </div>
+    
+    <!-- Error State -->
+    <div v-else-if="error" class="error">
+      <p>{{ error }}</p>
+    </div>
+    
+    <!-- No Data State -->
+    <div v-else-if="noData" class="no-data">
+      <p>No click data available for the selected URL(s).</p>
+      <p>Share your shortened URLs to start collecting statistics.</p>
+    </div>
+    
+    <!-- Dashboard Content -->
+    <div v-else class="dashboard-content">
+      <!-- Summary Stats Cards -->
+      <div class="stats-cards">
+        <div class="stat-card">
+          <h3>Total Clicks</h3>
+          <p class="stat-number">{{ dashboardData.totalClicks }}</p>
+        </div>
         
-        <form @submit.prevent="saveUrlChanges">
-          <div class="form-group">
-            <label for="original-url">Original URL</label>
-            <input type="url" id="original-url" v-model="editingUrl.originalUrl" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="short-code">Short Code</label>
-            <input type="text" id="short-code" v-model="editingUrl.shortCode" required>
-          </div>
-          
-          <div class="form-group checkbox">
-            <label>
-              <input type="checkbox" v-model="editingUrl.isActive">
-              Active
-            </label>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" @click="showEditModal = false" class="btn-cancel">Cancel</button>
-            <button type="submit" class="btn-save">Save Changes</button>
-          </div>
-        </form>
+        <div class="stat-card">
+          <h3>Unique Devices</h3>
+          <p class="stat-number">{{ uniqueDevices }}</p>
+        </div>
+        
+        <div class="stat-card">
+          <h3>Unique Browsers</h3>
+          <p class="stat-number">{{ uniqueBrowsers }}</p>
+        </div>
+        
+        <div class="stat-card">
+          <h3>Peak Day</h3>
+          <p class="stat-number">{{ peakDay.date }}</p>
+          <p class="stat-subtext">{{ peakDay.count }} clicks</p>
+        </div>
+      </div>
+      
+      <!-- Charts View -->
+      <div v-if="viewType === 'charts'" class="charts-grid">
+        <!-- Time Series Chart -->
+        <div class="chart-box full-width">
+          <line-chart 
+            :chart-data="dashboardData.clicksOverTime" 
+            title="Clicks Over Time (Last 30 Days)"
+          />
+        </div>
+        
+        <!-- Device Types Chart -->
+        <div class="chart-box">
+          <pie-chart 
+            :chart-data="dashboardData.deviceTypes" 
+            title="Clicks by Device Type"
+            label-field="DeviceType"
+            value-field="Count"
+          />
+        </div>
+        
+        <!-- Browsers Chart -->
+        <div class="chart-box">
+          <pie-chart 
+            :chart-data="dashboardData.browsers" 
+            title="Clicks by Browser"
+            label-field="Browser"
+            value-field="Count"
+          />
+        </div>
+        
+        <!-- Languages Chart -->
+        <div class="chart-box">
+          <pie-chart 
+            :chart-data="dashboardData.languages" 
+            title="Clicks by Language"
+            label-field="Language"
+            value-field="Count"
+          />
+        </div>
+        
+        <!-- Operating Systems Chart -->
+        <div class="chart-box">
+          <pie-chart 
+            :chart-data="dashboardData.operatingSystems" 
+            title="Clicks by Operating System"
+            label-field="OS"
+            value-field="Count"
+          />
+        </div>
+      </div>
+      
+      <!-- Tables View -->
+      <div v-else-if="viewType === 'tables'" class="tables-container">
+        <!-- Time Series Table -->
+        <div class="table-box full-width">
+          <tabular-view
+            :chart-data="dashboardData.clicksOverTime"
+            title="Clicks Over Time (Last 30 Days)"
+            label-field="Date"
+            label-header="Date"
+            value-field="Count"
+            value-header="Clicks"
+          />
+        </div>
+        
+        <!-- Device Types Table -->
+        <div class="table-box">
+          <tabular-view
+            :chart-data="dashboardData.deviceTypes"
+            title="Clicks by Device Type"
+            label-field="DeviceType"
+            label-header="Device Type"
+            value-field="Count"
+            value-header="Clicks"
+          />
+        </div>
+        
+        <!-- Browsers Table -->
+        <div class="table-box">
+          <tabular-view
+            :chart-data="dashboardData.browsers"
+            title="Clicks by Browser"
+            label-field="Browser"
+            label-header="Browser"
+            value-field="Count"
+            value-header="Clicks"
+          />
+        </div>
+        
+        <!-- Languages Table -->
+        <div class="table-box">
+          <tabular-view
+            :chart-data="dashboardData.languages"
+            title="Clicks by Language"
+            label-field="Language"
+            label-header="Language"
+            value-field="Count"
+            value-header="Clicks"
+          />
+        </div>
+        
+        <!-- Operating Systems Table -->
+        <div class="table-box">
+          <tabular-view
+            :chart-data="dashboardData.operatingSystems"
+            title="Clicks by Operating System"
+            label-field="OS"
+            label-header="Operating System"
+            value-field="Count"
+            value-header="Clicks"
+          />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import LineChart from './charts/LineChart.vue';
+import PieChart from './charts/PieChart.vue';
+import TabularView from './charts/TabularView.vue';
+import { mapGetters } from 'vuex';
 import exportApis from '@/services/api/exportApis';
-import { mapState, mapGetters } from 'vuex';
 
 export default {
   name: 'Dashboard',
+  components: {
+    LineChart,
+    PieChart,
+    TabularView
+  },
   data() {
     return {
-      currentFilter: 'all',
-      showEditModal: false,
-      editingUrl: null,
-      loading: true
+      loading: true,
+      error: null,
+      selectedUrlId: '',
+      viewType: 'charts', // default view is charts
+      urls: [],
+      dashboardData: {
+        totalClicks: 0,
+        clicksOverTime: [],
+        deviceTypes: [],
+        browsers: [],
+        languages: [],
+        operatingSystems: []
+      },
+      uniqueDevices: 0,
+      uniqueBrowsers: 0,
+      peakDay: {
+        date: '',
+        count: 0
+      }
     };
   },
   computed: {
-    ...mapState({
-      auth: state => state.auth
-    }),
     ...mapGetters(['isAuthenticated']),
-    
-    urls() {
-      const allUrls = this.$store.state.urls.urls || [];
-      // Chỉ lấy URLs thuộc về người dùng hiện tại
-      return allUrls.filter(url => url.userId === this.auth.user.id);
-    },
-    activeUrls() {
-      return this.urls.filter(url => url.isActive);
-    },
-    filteredUrls() {
-      if (this.currentFilter === 'active') {
-        return this.urls.filter(url => url.isActive);
-      } else if (this.currentFilter === 'inactive') {
-        return this.urls.filter(url => !url.isActive);
-      }
-      return this.urls;
+    noData() {
+      return this.dashboardData.totalClicks === 0;
+    }
+  },
+  created() {
+    if (this.isAuthenticated) {
+      this.fetchUrls();
     }
   },
   methods: {
     async fetchUrls() {
-      this.loading = true;
       try {
-        const response = await exportApis.urls.getAllUrls();
-        this.$store.commit('urls/SET_URLS', response);
+        const urls = await exportApis.urls.getAllUrls();
+        this.urls = urls;
+        this.fetchDashboardData();
       } catch (error) {
         console.error('Error fetching URLs:', error);
-      } finally {
+        this.error = 'Failed to load URLs. Please try again later.';
         this.loading = false;
       }
     },
-    getFullShortUrl(url) {
-      return `${window.location.origin}/${url.shortCode}`;
-    },
-    formatDate(dateString) {
-      const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-      return new Date(dateString).toLocaleDateString(undefined, options);
-    },
-    copyToClipboard(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert('URL đã được sao chép vào clipboard!');
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-      });
-    },
-    async toggleUrlStatus(url) {
+    
+    async fetchDashboardData() {
       try {
-        const updatedUrl = { ...url, isActive: !url.isActive };
+        this.loading = true;
+        this.error = null;
         
-        await exportApis.urls.updateUrl(url.id, updatedUrl);
+        const response = await exportApis.urls.getDashboardStats(this.selectedUrlId || null);
         
-        // Update the URL in the store
-        this.fetchUrls();
+        this.dashboardData = {
+          totalClicks: response.totalClicks || 0,
+          clicksOverTime: response.clicksOverTime || [],
+          deviceTypes: response.deviceTypes || [],
+          browsers: response.browsers || [],
+          languages: response.languages || [],
+          operatingSystems: response.operatingSystems || []
+        };
+        
+        this.uniqueDevices = response.uniqueDevices || 0;
+        this.uniqueBrowsers = response.uniqueBrowsers || 0;
+        this.peakDay = response.peakDay || { date: '', count: 0 };
+        
+        this.loading = false;
       } catch (error) {
-        console.error('Error updating URL status:', error);
-      }
-    },
-    editUrl(url) {
-      this.editingUrl = { ...url };
-      this.showEditModal = true;
-    },
-    async saveUrlChanges() {
-      try {
-        await exportApis.urls.updateUrl(this.editingUrl.id, this.editingUrl);
-        
-        // Refresh URLs
-        this.fetchUrls();
-        
-        // Close modal
-        this.showEditModal = false;
-        this.editingUrl = null;
-      } catch (error) {
-        console.error('Error saving URL changes:', error);
-        
-        if (error.userMessage) {
-          alert(error.userMessage);
-        } else {
-          alert('Không thể lưu thay đổi. Vui lòng thử lại.');
-        }
-      }
-    },
-    async deleteUrl(id) {
-      if (confirm('Bạn có chắc chắn muốn xóa URL này?')) {
-        try {
-          await exportApis.urls.deleteUrl(id);
-          this.$store.commit('urls/REMOVE_URL', id);
-        } catch (error) {
-          console.error('Error deleting URL:', error);
-        }
+        console.error('Error fetching dashboard data:', error);
+        this.error = 'Failed to load dashboard data. Please try again later.';
+        this.loading = false;
       }
     }
   },
-  created() {
-    // Fetch URLs when component is created
-    this.fetchUrls();
-  },
-  beforeRouteEnter(to, from, next) {
-    next(vm => {
-      // Check if user is authenticated
-      if (!vm.isAuthenticated) {
-        vm.$router.push('/login');
-      }
-    });
+  filters: {
+    truncate(value, length) {
+      if (!value) return '';
+      if (value.length <= length) return value;
+      return value.slice(0, length) + '...';
+    }
   }
 };
 </script>
 
 <style scoped>
 .dashboard {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -257,280 +306,157 @@ h1 {
   text-align: center;
 }
 
-h2 {
-  color: #2c3e50;
-  margin: 30px 0 20px;
-}
-
-.dashboard-stats {
+.control-panel {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 30px;
-}
-
-.stat-card {
-  flex: 1;
-  background-color: white;
+  background-color: #f8f9fa;
+  padding: 15px;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.stat-card h3 {
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: bold;
-  color: #42b983;
-}
-
-.url-filters {
+.url-selector {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.filter-btn {
-  padding: 8px 15px;
+.url-selector label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.url-selector select {
+  padding: 8px 12px;
+  border-radius: 4px;
   border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: white;
-  cursor: pointer;
-  transition: all 0.2s;
+  min-width: 300px;
+  font-size: 14px;
 }
 
-.filter-btn.active {
+.view-type-selector {
+  display: flex;
+  align-items: center;
+}
+
+.view-type-selector label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.toggle-buttons {
+  display: flex;
+}
+
+.toggle-btn {
+  padding: 8px 15px;
+  background-color: #e9ecef;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.toggle-btn:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.toggle-btn:last-child {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.toggle-btn.active {
   background-color: #42b983;
   color: white;
   border-color: #42b983;
 }
 
-.url-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #f9f9f9;
-}
-
-.url-details {
-  flex: 1;
-}
-
-.original-url, .short-url {
-  margin-bottom: 10px;
-}
-
-.original-url p {
-  word-break: break-all;
-  margin: 5px 0;
-}
-
-.short-url a {
-  color: #42b983;
-  text-decoration: none;
-  margin-right: 10px;
-}
-
-.disable-link {
-  color: #656565;
-  cursor: default;
-}
-
-.created-at {
-  color: #666;
-}
-
-.url-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.url-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #42b983;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-
-.status-label {
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.btn-copy, .btn-edit, .btn-delete {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.btn-copy {
-  background-color: #42b983;
-  color: white;
-}
-
-.btn-edit {
-  background-color: #3498db;
-  color: white;
-}
-
-.btn-delete {
-  background-color: #f56c6c;
-  color: white;
-}
-
-/* Modal Styles */
-.edit-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
-  padding: 30px;
-  width: 100%;
-  max-width: 500px;
-  position: relative;
-}
-
-.close-modal {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.form-group input[type="text"],
-.form-group input[type="url"] {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-}
-
-.form-group.checkbox {
-  display: flex;
-  align-items: center;
-}
-
-.form-group.checkbox label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 0;
-  cursor: pointer;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.btn-cancel {
-  padding: 8px 15px;
-  border: 1px solid #ddd;
-  background-color: white;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-save {
-  padding: 8px 15px;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.loading, .no-urls {
+.loading, .error, .no-data {
   text-align: center;
-  padding: 20px;
+  padding: 50px 0;
   color: #666;
 }
 
-.url-management {
-  background-color: white;
+.error {
+  color: #e74c3c;
+}
+
+.stats-cards {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  text-align: center;
+  min-width: 200px;
+  margin-bottom: 20px;
+}
+
+.stat-card h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.stat-number {
+  font-size: 30px;
+  font-weight: bold;
+  color: #42b983;
+  margin: 0;
+}
+
+.stat-subtext {
+  font-size: 14px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.charts-grid, .tables-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 20px;
+}
+
+.chart-box, .table-box {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .control-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .url-selector, .view-type-selector {
+    width: 100%;
+    margin-bottom: 15px;
+  }
+  
+  .charts-grid, .tables-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-box, .table-box {
+    width: 100%;
+  }
 }
 </style>

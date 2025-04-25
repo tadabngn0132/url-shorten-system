@@ -15,14 +15,22 @@
             <div class="created-at">
                 <small>Created at: {{ formatDate(url.createdAt) }}</small>
             </div>
+            <div v-if="url.clickCount !== undefined" class="click-count">
+                <small>Clicks: {{ url.clickCount }}</small>
+            </div>
         </div>
         <div class="url-actions">
-            <button @click="removeUrl" class="btn-delete">Delete</button>
+            <!-- Chỉ hiển thị nút xóa nếu người dùng đã đăng nhập -->
+            <button v-if="isAuthenticated" @click="removeUrl" class="btn-delete">Delete</button>
+            <!-- Hiển thị thông báo đối với guest -->
+            <small v-else class="guest-message">Login to manage URLs</small>
         </div>
     </div>
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
     name: 'UrlItem',
     props: {
@@ -36,6 +44,7 @@ export default {
         },
     },
     computed: {
+        ...mapGetters(['isAuthenticated']),
         shortUrl() {
             const baseUrl = window.location.origin;
             return `${baseUrl}/${this.url.shortCode}`;
@@ -97,8 +106,9 @@ export default {
     margin-right: 10px;
 }
 
-.created-at {
+.created-at, .click-count {
     color: #666;
+    margin-right: 15px;
 }
 
 .btn-copy, .btn-delete {
@@ -117,5 +127,10 @@ export default {
 .btn-delete {
     background-color: #f56c6c;
     color: white;
+}
+
+.guest-message {
+    color: #666;
+    font-style: italic;
 }
 </style>

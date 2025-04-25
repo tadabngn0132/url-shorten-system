@@ -58,6 +58,24 @@ namespace url_shorten_service.Controllers
                 // Cập nhật số lượt truy cập
                 url.ClickCount = (url.ClickCount ?? 0) + 1;
                 url.LastAccessed = DateTime.UtcNow;
+
+                // Thu thập thông tin chi tiết về lượt click
+                var clickInfo = new ClickInfo
+                {
+                    UrlId = url.Id,
+                    ClickedAt = DateTime.UtcNow,
+                    IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    Referrer = Request.Headers["Referer"].ToString(),
+                    Browser = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "browser"),
+                    DeviceType = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "device"),
+                    OperatingSystem = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "os"),
+                    Language = Request.Headers["Accept-Language"].ToString().Split(',').FirstOrDefault()
+                };
+
+                // Thêm thông tin click mới
+                _context.ClickInfo.Add(clickInfo);
+                
+                // Lưu thay đổi vào database
                 await _context.SaveChangesAsync();
 
                 // Chuyển hướng đến URL gốc
@@ -67,6 +85,44 @@ namespace url_shorten_service.Controllers
                 // Log lỗi
                 Console.WriteLine($"Error redirecting: {ex.Message}");
                 return StatusCode(500, new { error = "Internal server error during redirect" });
+            }
+        }
+        
+        // Helper method để phân tích User-Agent
+        private string ParseUserAgent(string userAgent, string infoType)
+        {
+            userAgent = userAgent.ToLower();
+            
+            switch (infoType)
+            {
+                case "browser":
+                    if (userAgent.Contains("chrome") && !userAgent.Contains("edg/")) return "Chrome";
+                    if (userAgent.Contains("edg/")) return "Edge";
+                    if (userAgent.Contains("firefox")) return "Firefox";
+                    if (userAgent.Contains("safari") && !userAgent.Contains("chrome")) return "Safari";
+                    if (userAgent.Contains("opr/") || userAgent.Contains("opera")) return "Opera";
+                    if (userAgent.Contains("msie") || userAgent.Contains("trident")) return "Internet Explorer";
+                    return "Unknown";
+                
+                case "device":
+                    if (userAgent.Contains("iphone")) return "iPhone";
+                    if (userAgent.Contains("ipad")) return "iPad";
+                    if (userAgent.Contains("android") && userAgent.Contains("mobile")) return "Android Phone";
+                    if (userAgent.Contains("android")) return "Android Tablet";
+                    if (userAgent.Contains("windows") && (userAgent.Contains("touch") || userAgent.Contains("tablet"))) return "Windows Tablet";
+                    if (userAgent.Contains("mobile") || userAgent.Contains("phone")) return "Mobile";
+                    return "Desktop";
+                
+                case "os":
+                    if (userAgent.Contains("windows")) return "Windows";
+                    if (userAgent.Contains("macintosh") || userAgent.Contains("mac os")) return "macOS";
+                    if (userAgent.Contains("linux") && !userAgent.Contains("android")) return "Linux";
+                    if (userAgent.Contains("android")) return "Android";
+                    if (userAgent.Contains("iphone") || userAgent.Contains("ipad") || userAgent.Contains("ipod")) return "iOS";
+                    return "Unknown";
+                    
+                default:
+                    return "Unknown";
             }
         }
 
@@ -284,9 +340,297 @@ namespace url_shorten_service.Controllers
             }
         }
 
+        // GET: api/Urls/dashboard-stats/{urlId?}
+        [HttpGet("dashboard-stats/{urlId?}")]
+        public async Task<ActionResult<object>> GetDashboardStats(int? urlId = null)
+        {
+            // Start debugging
+            Console.WriteLine("===============================================");
+            Console.WriteLine($"GetDashboardStats called with urlId: {urlId}");
+            
+            // Log authentication info
+            string userId = HttpContext.Items["UserId"] as string;
+            string username = HttpContext.Items["Username"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+            
+            Console.WriteLine($"Auth Info: UserId={userId}, Username={username}, Role={userRole}");
+            Console.WriteLine($"Authorization Header: {Request.Headers["Authorization"]}");
+            
+            // Dump all HttpContext.Items for debugging
+            Console.WriteLine("All HttpContext.Items:");
+            foreach (var item in HttpContext.Items)
+            {
+                Console.WriteLine($"  {item.Key}: {item.Value}");
+            }
+
+            // Chỉ cho phép người dùng đã xác thực
+            if (string.IsNullOrEmpty(userId) && userRole != "admin")
+            {
+                Console.WriteLine("Authentication failed: UserId is null/empty and role is not admin");
+                return Unauthorized(new { error = "Authentication required" });
+            }
+
+            try
+            {
+                Console.WriteLine("Building query for URLs...");
+                // Base query - filter by userId if not admin
+                IQueryable<Url> urlQuery = _context.Url;
+                if (userRole != "admin")
+                {
+                    Console.WriteLine($"Filtering URLs for user: {userId}");
+                    urlQuery = urlQuery.Where(u => u.UserId == userId);
+                }
+                else
+                {
+                    Console.WriteLine("Admin user - no filtering applied");
+                }
+
+                // If specific URL ID is provided, filter for that URL only
+                if (urlId.HasValue)
+                {
+                    Console.WriteLine($"Filtering for specific URL ID: {urlId}");
+                    var specificUrl = await urlQuery.FirstOrDefaultAsync(u => u.Id == urlId.Value);
+                    if (specificUrl == null)
+                    {
+                        Console.WriteLine($"URL ID {urlId} not found or not accessible");
+                        return NotFound(new { error = "URL not found or you don't have access to it" });
+                    }
+                    urlQuery = urlQuery.Where(u => u.Id == urlId.Value);
+                }
+
+                // Get all URLs that the user has access to
+                var urlIds = await urlQuery.Select(u => u.Id).ToListAsync();
+                Console.WriteLine($"Found {urlIds.Count} accessible URLs");
+                
+                if (!urlIds.Any())
+                {
+                    Console.WriteLine("No URLs found - returning empty data");
+                    return Ok(new
+                    {
+                        message = "No URLs found",
+                        totalClicks = 0,
+                        clicksOverTime = new List<object>(),
+                        deviceTypes = new List<object>(),
+                        browsers = new List<object>(),
+                        languages = new List<object>(),
+                        operatingSystems = new List<object>(),
+                        uniqueDevices = 0,
+                        uniqueBrowsers = 0,
+                        peakDay = new { date = "", count = 0 }
+                    });
+                }
+
+                // Debugging - list URL IDs
+                Console.WriteLine("URL IDs found:");
+                foreach (var id in urlIds.Take(5))
+                {
+                    Console.WriteLine($"  URL ID: {id}");
+                }
+                if (urlIds.Count > 5)
+                {
+                    Console.WriteLine($"  ... and {urlIds.Count - 5} more");
+                }
+
+                // Get all click info for these URLs
+                Console.WriteLine("Building ClickInfo query...");
+                var clicksQuery = _context.ClickInfo.Where(c => urlIds.Contains(c.UrlId));
+
+                // Total clicks
+                int totalClicks = await clicksQuery.CountAsync();
+                Console.WriteLine($"Total clicks found: {totalClicks}");
+
+                // Clicks over time (last 30 days)
+                var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+                Console.WriteLine($"Getting clicks from {thirtyDaysAgo} to now");
+                
+                var clicksOverTime = await clicksQuery
+                    .Where(c => c.ClickedAt >= thirtyDaysAgo)
+                    .GroupBy(c => c.ClickedAt.Date)
+                    .Select(g => new 
+                    { 
+                        Date = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderBy(x => x.Date)
+                    .ToListAsync();
+                
+                Console.WriteLine($"Time series data points: {clicksOverTime.Count}");
+
+                // Find peak day
+                var peakDay = clicksOverTime.OrderByDescending(c => c.Count).FirstOrDefault() 
+                    ?? new { Date = DateTime.UtcNow, Count = 0 };
+                
+                Console.WriteLine($"Peak day: {peakDay.Date:yyyy-MM-dd} with {peakDay.Count} clicks");
+
+                // Unique devices count
+                int uniqueDevices = await clicksQuery
+                    .Select(c => c.DeviceType)
+                    .Distinct()
+                    .CountAsync();
+                
+                Console.WriteLine($"Unique devices: {uniqueDevices}");
+
+                // Unique browsers count
+                int uniqueBrowsers = await clicksQuery
+                    .Select(c => c.Browser)
+                    .Distinct()
+                    .CountAsync();
+                
+                Console.WriteLine($"Unique browsers: {uniqueBrowsers}");
+
+                // Device types
+                var deviceTypes = await clicksQuery
+                    .GroupBy(c => c.DeviceType)
+                    .Select(g => new 
+                    { 
+                        DeviceType = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync();
+                
+                Console.WriteLine($"Device types: {deviceTypes.Count}");
+
+                // Browsers
+                var browsers = await clicksQuery
+                    .GroupBy(c => c.Browser)
+                    .Select(g => new 
+                    { 
+                        Browser = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync();
+                
+                Console.WriteLine($"Browsers: {browsers.Count}");
+
+                // Languages
+                var languages = await clicksQuery
+                    .GroupBy(c => c.Language)
+                    .Select(g => new 
+                    { 
+                        Language = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync();
+                
+                Console.WriteLine($"Languages: {languages.Count}");
+
+                // Operating Systems
+                var operatingSystems = await clicksQuery
+                    .GroupBy(c => c.OperatingSystem)
+                    .Select(g => new 
+                    { 
+                        OS = g.Key,
+                        Count = g.Count()
+                    })
+                    .OrderByDescending(x => x.Count)
+                    .ToListAsync();
+                
+                Console.WriteLine($"Operating systems: {operatingSystems.Count}");
+                Console.WriteLine("All data retrieved successfully, returning response");
+
+                // Return all statistics
+                return Ok(new
+                {
+                    totalClicks,
+                    clicksOverTime,
+                    deviceTypes,
+                    browsers,
+                    languages,
+                    operatingSystems,
+                    uniqueDevices,
+                    uniqueBrowsers,
+                    peakDay = new { 
+                        date = peakDay.Date.ToString("MM/dd/yyyy"), 
+                        count = peakDay.Count 
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Log details of exception
+                Console.WriteLine($"ERROR in GetDashboardStats: {ex.GetType().Name}");
+                Console.WriteLine($"Message: {ex.Message}");
+                Console.WriteLine($"StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                Console.WriteLine("===============================================");
+                
+                return StatusCode(500, new { error = "An error occurred while retrieving dashboard statistics", details = ex.Message });
+            }
+        }
+
+        // POST: api/Urls/transfer-ownership
+        [HttpPost("transfer-ownership")]
+        public async Task<IActionResult> TransferUrlOwnership([FromBody] TransferOwnershipRequest request)
+        {
+            if (request == null || request.UrlIds == null || request.UrlIds.Count == 0 || string.IsNullOrEmpty(request.NewUserId))
+            {
+                return BadRequest(new { error = "Invalid request data" });
+            }
+
+            try
+            {
+                int updatedCount = 0;
+                List<int> successfulIds = new List<int>();
+                List<int> failedIds = new List<int>();
+
+                foreach (var urlId in request.UrlIds)
+                {
+                    var url = await _context.Url.FindAsync(urlId);
+                    
+                    if (url == null)
+                    {
+                        failedIds.Add(urlId);
+                        continue;
+                    }
+
+                    // Chỉ cập nhật URL nếu userId là "guest" hoặc không có
+                    if (string.IsNullOrEmpty(url.UserId) || url.UserId == "guest")
+                    {
+                        url.UserId = request.NewUserId;
+                        _context.Entry(url).State = EntityState.Modified;
+                        updatedCount++;
+                        successfulIds.Add(urlId);
+                    }
+                    else
+                    {
+                        failedIds.Add(urlId);
+                    }
+                }
+
+                // Lưu các thay đổi vào database
+                if (updatedCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new { 
+                    message = $"Transferred ownership of {updatedCount} URLs to user {request.NewUserId}",
+                    successfulIds,
+                    failedIds
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "An error occurred while transferring URL ownership", details = ex.Message });
+            }
+        }
+
         private bool UrlExists(int id)
         {
             return _context.Url.Any(e => e.Id == id);
         }
+    }
+
+    // DTO cho yêu cầu chuyển đổi quyền sở hữu
+    public class TransferOwnershipRequest
+    {
+        public List<int> UrlIds { get; set; }
+        public string NewUserId { get; set; }
     }
 }
