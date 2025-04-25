@@ -55,7 +55,7 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 import exportApis from '@/services/api/exportApis';
 
 export default {
@@ -70,7 +70,10 @@ export default {
         };
     },
     computed: {
-        ...mapGetters(['isAuthenticated'])
+        ...mapGetters(['isAuthenticated']),
+        ...mapState({
+            auth: state => state.auth
+        })
     },
     methods: {
         async shortenUrl() {
@@ -83,7 +86,7 @@ export default {
                     originalUrl: this.originalUrl,
                     shortCode: this.customCode || '',
                     isActive: true,
-                    userId: "guest" // Gán ID mặc định cho khách
+                    userId: this.isAuthenticated ? this.auth.user.id : "guest" // Lấy ID người dùng nếu đã đăng nhập
                 };
                 
                 // Gọi API

@@ -140,7 +140,9 @@ export default {
     ...mapGetters(['isAuthenticated']),
     
     urls() {
-      return this.$store.state.urls.urls || [];
+      const allUrls = this.$store.state.urls.urls || [];
+      // Chỉ lấy URLs thuộc về người dùng hiện tại
+      return allUrls.filter(url => url.userId === this.auth.user.id);
     },
     activeUrls() {
       return this.urls.filter(url => url.isActive);

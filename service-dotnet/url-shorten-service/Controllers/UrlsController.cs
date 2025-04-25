@@ -102,14 +102,6 @@ namespace url_shorten_service.Controllers
                 return NotFound();
             }
 
-            // Kiểm tra quyền - chỉ người tạo URL hoặc admin mới có thể cập nhật
-            string userId = HttpContext.Items["UserId"] as string;
-            string userRole = HttpContext.Items["UserRole"] as string;
-            if (userId != existingUrl.UserId && userRole != "admin")
-            {
-                return Forbid("You don't have permission to update this URL");
-            }
-
             // Nếu shortcode mới khác với shortcode cũ và không trống
             if (!string.IsNullOrEmpty(url.ShortCode) && url.ShortCode != existingUrl.ShortCode)
             {
