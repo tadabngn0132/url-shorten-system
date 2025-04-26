@@ -198,13 +198,37 @@
         "EnableRateLimiting": true,
         "Period": "5s",
         "PeriodTimespan": 1,
-        "Limit": 5,
+        "Limit": 15,
         "QuotaExceededMessage": "Too Many Requests",
         "HttpStatusCode": 429
       },
       "FileCacheOptions": {
         "Region": "url-cache",
         "TtlSeconds": 15
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/{id}/toggle-status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/{id}/toggle-status",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Too many status toggle requests",
+        "HttpStatusCode": 429
       }
     },
     {

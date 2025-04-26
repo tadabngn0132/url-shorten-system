@@ -1,73 +1,129 @@
 <template>
-    <div class="bulk-shortener">
-        <h2>Bulk URL Shortener</h2>
-        <p class="description">Enter multiple URLs to shorten (one URL per line)</p>
+    <div class="bulk-shortener-container">
+        <div class="bulk-shortener-header">
+            <h1>Bulk URL Shortener</h1>
+            <p class="bulk-shortener-subtitle">Shorten multiple URLs at once and save time</p>
+        </div>
 
-        <form @submit.prevent="shortenUrls" class="shortener-form">
-            <div class="input-group">
-                <textarea
-                    v-model="urlsInput"
-                    placeholder="Enter URLs (one per line)"
-                    required
-                    class="urls-textarea"
-                    rows="10"
-                ></textarea>
+        <div class="card bulk-card">
+            <div class="card-body">
+                <form @submit.prevent="shortenUrls" class="bulk-form">
+                    <div class="form-group">
+                        <label class="form-label" for="urls-input">Enter multiple URLs to shorten</label>
+                        <div class="helper-text">One URL per line</div>
+                        <textarea
+                            id="urls-input"
+                            v-model="urlsInput"
+                            placeholder="https://example.com/very/long/url
+https://another-example.com/long/path
+https://third-example.com/path"
+                            required
+                            class="form-textarea"
+                            rows="8"
+                        ></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-container">
+                            <input type="checkbox" v-model="generateCustomCodes">
+                            <span class="checkmark"></span>
+                            <span>Generate custom short codes (add a colon and custom code after each URL)</span>
+                        </label>
+                        <div v-if="generateCustomCodes" class="helper-text mt-2">
+                            <div class="example-format">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <span>Format: <code>https://example.com:my-custom-code</code></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" :disabled="isSubmitting || !isAuthenticated">
+                        <svg v-if="isSubmitting" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="loading-icon">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                        </svg>
+                        <span v-else>{{ isSubmitting ? 'Processing...' : 'Shorten URLs' }}</span>
+                    </button>
+                    
+                    <div v-if="!isAuthenticated" class="auth-warning mt-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <div>
+                            <p>You need to be logged in to use bulk shortening.</p>
+                            <router-link to="/login" class="btn btn-outline btn-sm mt-2">Login Now</router-link>
+                        </div>
+                    </div>
+                </form>
             </div>
+        </div>
 
-            <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" v-model="generateCustomCodes">
-                    Generate custom short codes (add a colon and custom code after each URL)
-                </label>
-            </div>
-
-            <button type="submit" class="btn-shorten" :disabled="isSubmitting || !isAuthenticated">
-                {{ isSubmitting ? 'Processing...' : 'Shorten URLs' }}
-            </button>
-            
-            <div v-if="!isAuthenticated" class="auth-warning">
-                You need to be logged in to use bulk shortening.
-                <router-link to="/login">Login</router-link>
-            </div>
-        </form>
-
-        <div v-if="error" class="error-message">
+        <div v-if="error" class="alert alert-danger mt-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
             {{ error }}
         </div>
 
-        <div v-if="results.length > 0" class="results">
-            <h3>Results:</h3>
-            <div class="results-actions">
-                <button @click="copyAllToClipboard" class="btn-copy-all">
-                    Copy All URLs
-                </button>
-                <button @click="downloadCsv" class="btn-download">
-                    Download as CSV
-                </button>
-            </div>
-            <div class="results-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Original URL</th>
-                            <th>Shortened URL</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="(result, index) in results" :key="index">
-                            <td class="original-url">{{ result.originalUrl }}</td>
-                            <td>
-                                <a :href="result.shortenedUrl" target="_blank">{{ result.shortenedUrl }}</a>
-                            </td>
-                            <td>
-                                <button @click="copyToClipboard(result.shortenedUrl)" class="btn-copy">
-                                    Copy
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div v-if="results.length > 0" class="results-container mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex-between">
+                        <h2>Results</h2>
+                        <div class="results-actions">
+                            <button @click="copyAllToClipboard" class="btn btn-outline btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                Copy All
+                            </button>
+                            <button @click="downloadCsv" class="btn btn-primary btn-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Download CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Original URL</th>
+                                    <th>Shortened URL</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(result, index) in results" :key="index" :class="{ 'error-row': result.error }">
+                                    <td class="original-url">{{ result.originalUrl }}</td>
+                                    <td>
+                                        <a v-if="!result.error" :href="result.shortenedUrl" target="_blank" class="shortened-url">{{ result.shortenedUrl }}</a>
+                                        <span v-else class="error-message">{{ result.shortenedUrl }}</span>
+                                    </td>
+                                    <td>
+                                        <button v-if="!result.error" @click="copyToClipboard(result.shortenedUrl)" class="btn btn-outline btn-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -94,7 +150,7 @@ export default {
     methods: {
         async shortenUrls() {
             if (!this.isAuthenticated) {
-                this.error = 'Bạn phải đăng nhập để sử dụng tính năng rút gọn hàng loạt.';
+                this.error = 'You need to be logged in to use bulk shortening.';
                 return;
             }
 
@@ -107,12 +163,12 @@ export default {
                 const urlLines = this.urlsInput.trim().split('\n');
                 
                 if (urlLines.length === 0 || (urlLines.length === 1 && urlLines[0] === '')) {
-                    this.error = 'Vui lòng nhập ít nhất một URL.';
+                    this.error = 'Please enter at least one URL.';
                     this.isSubmitting = false;
                     return;
                 }
 
-                // Chuẩn bị dữ liệu cho API
+                // Prepare data for API
                 const urlsData = [];
                 
                 for (const line of urlLines) {
@@ -135,7 +191,7 @@ export default {
                     if (!this.isValidUrl(originalUrl)) {
                         this.results.push({
                             originalUrl,
-                            shortenedUrl: 'Định dạng URL không hợp lệ',
+                            shortenedUrl: 'Invalid URL format',
                             error: true
                         });
                         continue;
@@ -150,26 +206,26 @@ export default {
                     if (customCode && !/^[a-zA-Z0-9_-]+$/.test(customCode)) {
                         this.results.push({
                             originalUrl,
-                            shortenedUrl: 'Mã rút gọn chỉ có thể chứa chữ cái, số, dấu gạch dưới và dấu gạch ngang',
+                            shortenedUrl: 'Custom code can only contain letters, numbers, underscores, and hyphens',
                             error: true
                         });
                         continue;
                     }
 
-                    // Thêm URL vào danh sách cần rút gọn
+                    // Add URL to the list to be shortened
                     urlsData.push({
                         originalUrl,
                         shortCode: customCode
                     });
                 }
 
-                // Gọi API bulk shorten thay vì gọi riêng lẻ
+                // Call bulk shorten API instead of individual calls
                 if (urlsData.length > 0) {
                     const response = await exportApis.urls.bulkShorten(urlsData);
                     
-                    // Xử lý kết quả trả về
+                    // Process results
                     if (response.urls && response.urls.length > 0) {
-                        // Thêm các URL thành công vào kết quả
+                        // Add successful URLs to results
                         for (const url of response.urls) {
                             this.results.push({
                                 originalUrl: url.originalUrl,
@@ -179,7 +235,7 @@ export default {
                         }
                     }
                     
-                    // Xử lý các lỗi nếu có
+                    // Process errors if any
                     if (response.errors && response.errors.length > 0) {
                         for (const errorItem of response.errors) {
                             this.results.push({
@@ -194,7 +250,7 @@ export default {
                 }
             } catch (error) {
                 console.error('Error processing URLs:', error);
-                this.error = error.userMessage || 'Đã xảy ra lỗi không mong muốn khi xử lý URL. Vui lòng thử lại.';
+                this.error = error.userMessage || 'An unexpected error occurred while processing URLs. Please try again.';
             } finally {
                 this.isSubmitting = false;
             }
@@ -215,7 +271,8 @@ export default {
         
         copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('URL đã được sao chép vào clipboard!');
+                // Show notification - could be improved with toast
+                alert('URL copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
@@ -225,12 +282,12 @@ export default {
             const successfulUrls = this.results.filter(r => !r.error).map(r => r.shortenedUrl).join('\n');
             
             if (!successfulUrls) {
-                alert('Không có URL hợp lệ để sao chép.');
+                alert('No valid URLs to copy.');
                 return;
             }
             
             navigator.clipboard.writeText(successfulUrls).then(() => {
-                alert('Tất cả URL đã được sao chép vào clipboard!');
+                alert('All URLs copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
@@ -238,7 +295,7 @@ export default {
         
         downloadCsv() {
             // Create CSV content
-            let csvContent = 'URL gốc,URL rút gọn\n';
+            let csvContent = 'Original URL,Shortened URL\n';
             
             this.results.forEach(result => {
                 if (!result.error) {
@@ -264,149 +321,177 @@ export default {
 </script>
 
 <style scoped>
-.bulk-shortener {
+.bulk-shortener-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.bulk-shortener-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.bulk-shortener-subtitle {
+    color: var(--gray);
+    margin-top: 0.5rem;
+}
+
+.bulk-card {
+    margin-bottom: 2rem;
+}
+
+.bulk-form {
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
 }
 
-h2 {
-    color: #2c3e50;
-    margin-bottom: 10px;
+.helper-text {
+    font-size: 0.875rem;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
 }
 
-.description {
-    color: #666;
-    margin-bottom: 20px;
-}
-
-.shortener-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.input-group {
+.form-textarea {
     width: 100%;
-}
-
-.urls-textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-    font-family: inherit;
+    min-height: 200px;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-light);
+    border-radius: var(--rounded);
+    font-size: 1rem;
+    font-family: var(--font-sans);
     resize: vertical;
 }
 
-.options {
-    margin: 10px 0;
-}
-
-.checkbox-label {
+.checkbox-container {
     display: flex;
     align-items: center;
-    gap: 8px;
     cursor: pointer;
+    font-size: 1rem;
+    user-select: none;
+    gap: 0.5rem;
 }
 
-.btn-shorten {
-    background-color: #42b983;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 5px;
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
+    height: 0;
+    width: 0;
 }
 
-.btn-shorten:hover {
-    background-color: #3aa876;
+.checkmark {
+    position: relative;
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 1px solid var(--gray-light);
+    border-radius: 3px;
+    transition: all 0.2s ease;
 }
 
-.btn-shorten:disabled {
-    background-color: #95d5b2;
-    cursor: not-allowed;
+.checkbox-container:hover input ~ .checkmark {
+    background-color: #f9fafb;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-container .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.example-format {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(59, 130, 246, 0.05);
+    border-radius: var(--rounded);
+}
+
+code {
+    background-color: rgba(59, 130, 246, 0.1);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-family: monospace;
 }
 
 .auth-warning {
-    color: #e6a23c;
-    background-color: #fdf6ec;
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background-color: rgba(245, 158, 11, 0.1);
+    border-left: 4px solid var(--warning);
+    border-radius: var(--rounded);
 }
 
-.auth-warning a {
-    color: #e6a23c;
-    font-weight: bold;
-    text-decoration: underline;
+.auth-warning svg {
+    color: var(--warning);
+    flex-shrink: 0;
 }
 
-.error-message {
-    color: #f56c6c;
-    margin: 15px 0;
-    padding: 10px;
-    background-color: #fef0f0;
-    border-radius: 4px;
+.mt-2 {
+    margin-top: 0.5rem;
 }
 
-.results {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
+.mt-3 {
+    margin-top: 1rem;
 }
 
-.results h3 {
-    margin-bottom: 20px;
+.mt-4 {
+    margin-top: 1.5rem;
+}
+
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .results-actions {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 0.5rem;
 }
 
-.btn-copy-all, .btn-download {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.btn-copy-all {
-    background-color: #42b983;
-    color: white;
-}
-
-.btn-download {
-    background-color: #3498db;
-    color: white;
-}
-
-.results-table {
+.table-container {
     overflow-x: auto;
 }
 
-table {
+.table {
     width: 100%;
     border-collapse: collapse;
 }
 
-th, td {
-    padding: 12px 15px;
+.table th,
+.table td {
+    padding: 0.75rem 1rem;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--gray-light);
 }
 
-th {
-    background-color: #f2f2f2;
-    font-weight: bold;
+.table th {
+    font-weight: 600;
+    background-color: rgba(249, 250, 251, 0.5);
 }
 
 .original-url {
@@ -416,13 +501,38 @@ th {
     white-space: nowrap;
 }
 
-.btn-copy {
-    background-color: #42b983;
-    color: white;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 14px;
+.shortened-url {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.error-row {
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.error-message {
+    color: var(--danger);
+}
+
+.loading-icon {
+    animation: spin 1s linear infinite;
+    margin-right: 0.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+    .flex-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .results-actions {
+        width: 100%;
+    }
 }
 </style>

@@ -87,5 +87,10 @@ export const urlService = {
     bulkShorten: handleError(async (urlsData) => {
         const res = await apiClient.urlApiClient.post('/bulk', { urls: urlsData });
         return res.data;
+    }),
+
+    toggleUrlStatus: handleError(async (id, isActive) => {
+        const res = await apiClient.urlApiClient.put(`/${id}/toggle-status`, { isActive });
+        return res.data;
     })
 }

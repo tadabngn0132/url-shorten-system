@@ -48,7 +48,7 @@ namespace url_shorten_service.Controllers
             }
         }
 
-        // GET: r/{shortCode} - Chuyển hướng trực tiếp từ shortcode đến URL đích
+        // GET: r/{shortCode} - Trả về URL đích dưới dạng text
         [HttpGet]
         [Route("/redirect/{shortCode}")]
         public async Task<IActionResult> RedirectFromShortCode(string shortCode)
@@ -58,13 +58,14 @@ namespace url_shorten_service.Controllers
 
                 if (url == null)
                 {
-                    return NotFound(new { error = "URL not found" });
+                    // Trả về status 404 Not Found nếu URL không tồn tại
+                    return NotFound(new { status = 404, message = "URL not found", shortCode = shortCode });
                 }
 
-                // Kiểm tra nếu URL không còn hoạt động
+                // Kiểm tra trạng thái active, nếu inactive thì trả về lỗi 403 Forbidden
                 if (!url.IsActive)
                 {
-                    return BadRequest(new { error = "This shortened URL is no longer active" });
+                    return StatusCode(403, new { status = 403, message = "This link has been deactivated by its owner", shortCode = shortCode });
                 }
 
                 string originalUrl = url.OriginalUrl;
@@ -89,22 +90,17 @@ namespace url_shorten_service.Controllers
                     Browser = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "browser"),
                     DeviceType = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "device"),
                     OperatingSystem = ParseUserAgent(Request.Headers["User-Agent"].ToString(), "os"),
-                    Language = Request.Headers["Accept-Language"].ToString().Split(',').FirstOrDefault()
                 };
 
-                // Thêm thông tin click mới
                 _context.ClickInfo.Add(clickInfo);
-                
-                // Lưu thay đổi vào database
                 await _context.SaveChangesAsync();
 
-                // Chuyển hướng đến URL gốc
-                return Redirect(originalUrl);
+                // Trả về URL gốc dưới dạng text để frontend chuyển hướng
+                return Content(originalUrl, "text/plain");
             }
-            catch (Exception ex) {
-                // Log lỗi
-                Console.WriteLine($"Error redirecting: {ex.Message}");
-                return StatusCode(500, new { error = "Internal server error during redirect" });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = 500, message = "Server error", error = ex.Message });
             }
         }
         
@@ -249,6 +245,86 @@ namespace url_shorten_service.Controllers
             }
 
             return NoContent();
+        }
+
+        // PUT: api/Urls/5/toggle-status
+        [HttpPut("{id}/toggle-status")]
+        public async Task<IActionResult> ToggleUrlStatus(int id, [FromBody] ToggleStatusRequest request)
+        {
+            // Lấy thông tin người dùng từ token JWT
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
+            // Truy vấn URL với AsNoTracking để lấy dữ liệu mới nhất, tránh cache
+            var url = await _context.Url
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == id);
+            
+            if (url == null)
+            {
+                return NotFound(new { error = "URL not found", success = false });
+            }
+
+            // Kiểm tra quyền truy cập - chỉ admin hoặc chủ sở hữu của URL mới có thể cập nhật
+            if (userRole != "admin" && url.UserId != userId)
+            {
+                return StatusCode(403, new { error = "You don't have permission to update this URL", success = false });
+            }
+
+            try
+            {
+                // Lấy URL cho việc cập nhật (khác với URL đã truy vấn bằng AsNoTracking)
+                var urlToUpdate = await _context.Url.FindAsync(id);
+                if (urlToUpdate == null)
+                {
+                    return NotFound(new { error = "URL not found during update", success = false });
+                }
+
+                // Cập nhật trạng thái
+                urlToUpdate.IsActive = request.IsActive;
+                
+                // Cập nhật thời gian truy cập gần nhất
+                urlToUpdate.LastAccessed = DateTime.UtcNow;
+
+                _context.Entry(urlToUpdate).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                // Truy vấn lại URL sau khi cập nhật để xác nhận trạng thái đã được lưu
+                var updatedUrl = await _context.Url
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == id);
+
+                // Log thông tin để debug
+                Console.WriteLine($"URL {id} status toggle: requested={request.IsActive}, actual={updatedUrl.IsActive}");
+
+                // Trả về đối tượng đầy đủ để frontend cập nhật
+                return Ok(new { 
+                    id = updatedUrl.Id,
+                    shortCode = updatedUrl.ShortCode,
+                    originalUrl = updatedUrl.OriginalUrl,
+                    isActive = updatedUrl.IsActive,
+                    message = $"URL status {(updatedUrl.IsActive ? "activated" : "deactivated")} successfully", 
+                    success = true
+                });
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Log lỗi để debug
+                Console.WriteLine($"Concurrency exception when updating URL {id}: {ex.Message}");
+                return StatusCode(500, new { error = "A concurrency error occurred while updating URL status", success = false });
+            }
+            catch (Exception ex) 
+            {
+                // Log lỗi để debug
+                Console.WriteLine($"Error toggling URL {id} status: {ex.Message}");
+                return StatusCode(500, new { error = "An error occurred while updating URL status", details = ex.Message, success = false });
+            }
+        }
+
+        // DTO cho yêu cầu toggle trạng thái
+        public class ToggleStatusRequest
+        {
+            public bool IsActive { get; set; }
         }
 
         // POST: api/Urls

@@ -1,15 +1,43 @@
 <template>
   <div id="app">
-    <header>
-      <Navbar/>
+    <header class="navbar">
+      <div class="navbar-container">
+        <div class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>URL Shortener</span>
+        </div>
+        <Navbar/>
+      </div>
     </header>
     
     <main>
-      <router-view/>
+      <div class="container">
+        <router-view/>
+      </div>
     </main>
     
     <footer>
-      <p>&copy; 2025 URL Shortener - Microservice Project</p>
+      <div class="footer-content">
+        <div class="footer-logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>URL Shortener</span>
+        </div>
+        <div class="footer-links">
+          <a href="#" class="footer-link">Home</a>
+          <a href="#" class="footer-link">About</a>
+          <a href="#" class="footer-link">Terms</a>
+          <a href="#" class="footer-link">Privacy</a>
+        </div>
+        <div class="footer-copyright">
+          &copy; 2025 URL Shortener - All rights reserved
+        </div>
+      </div>
     </footer>
   </div>
 </template>
@@ -25,82 +53,5 @@ export default {
 </script>
 
 <style>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  line-height: 1.5;
-  background-color: #f8f9fa;
-}
-
-#app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-header {
-  background-color: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 15px 20px;
-}
-
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #42b983;
-}
-
-.nav-links {
-  display: flex;
-  gap: 20px;
-}
-
-.nav-links a {
-  color: #2c3e50;
-  text-decoration: none;
-  padding: 5px 10px;
-  border-radius: 3px;
-  transition: background-color 0.3s;
-}
-
-.nav-links a:hover {
-  background-color: #f0f0f0;
-}
-
-.nav-links a.router-link-active {
-  color: #42b983;
-  font-weight: bold;
-}
-
-main {
-  flex: 1;
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-footer {
-  text-align: center;
-  padding: 20px;
-  background-color: white;
-  border-top: 1px solid #eee;
-  margin-top: auto;
-}
+@import './assets/styles/modern-ui.css';
 </style>

@@ -30,16 +30,16 @@ export default {
     backgroundColors: {
       type: Array,
       default: () => [
-        '#42b983', // Primary color (Vue green)
-        '#2c3e50', // Dark blue
-        '#f39c12', // Orange
-        '#3498db', // Blue
-        '#e74c3c', // Red
-        '#9b59b6', // Purple
-        '#1abc9c', // Turquoise
-        '#f1c40f', // Yellow
-        '#34495e', // Dark gray
-        '#95a5a6'  // Light gray
+        '#3b82f6', // Blue (Primary)
+        '#10b981', // Emerald (Secondary)
+        '#8b5cf6', // Violet
+        '#f97316', // Orange
+        '#ec4899', // Pink
+        '#14b8a6', // Teal
+        '#eab308', // Yellow
+        '#6366f1', // Indigo
+        '#a855f7', // Purple
+        '#ef4444'  // Red
       ]
     }
   },
@@ -119,30 +119,107 @@ export default {
         colors.push(this.backgroundColors[i % this.backgroundColors.length]);
       }
 
+      // Create background colors with opacity for hover
+      const hoverColors = colors.map(color => {
+        return this.adjustColorOpacity(color, 0.8);
+      });
+
       this.chart = new Chart(ctx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
           labels: labels,
           datasets: [{
             data: data,
             backgroundColor: colors,
-            hoverOffset: 4
+            hoverBackgroundColor: hoverColors,
+            borderColor: 'white',
+            borderWidth: 2,
+            hoverBorderWidth: 3,
+            hoverBorderColor: 'white',
+            borderRadius: 4,
+            spacing: 2,
+            hoverOffset: 8
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 5,
+              bottom: 5,
+              left: 5,
+              right: 5
+            }
+          },
           plugins: {
             title: {
               display: true,
               text: this.title,
               font: {
-                size: 16
-              }
+                size: 16,
+                weight: 'bold',
+                family: "'Avenir', 'Helvetica', 'Arial', sans-serif"
+              },
+              padding: {
+                top: 10,
+                bottom: 20
+              },
+              color: '#1e293b' // Dark slate
             },
             legend: {
               display: true,
-              position: 'right'
+              position: 'right',
+              align: 'center',
+              labels: {
+                boxWidth: 15,
+                boxHeight: 15,
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                font: {
+                  family: "'Avenir', 'Helvetica', 'Arial', sans-serif",
+                  size: 12
+                },
+                color: '#64748b', // Gray
+                filter: (legendItem, data) => {
+                  // Hide legend items with no data or very small values
+                  const value = data.datasets[0].data[legendItem.index];
+                  return value > 0;
+                },
+                generateLabels: (chart) => {
+                  const data = chart.data;
+                  if (data.labels.length && data.datasets.length) {
+                    const {labels: {pointStyle}} = chart.legend.options;
+                    
+                    return data.labels.map((label, i) => {
+                      const value = data.datasets[0].data[i];
+                      const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                      const percentage = Math.round((value / total) * 100);
+                      
+                      // Only include in legend if value > 0
+                      if (value <= 0) return null;
+                      
+                      return {
+                        text: `${label} (${percentage}%)`,
+                        fillStyle: data.datasets[0].backgroundColor[i],
+                        strokeStyle: data.datasets[0].borderColor,
+                        lineWidth: data.datasets[0].borderWidth,
+                        pointStyle: pointStyle,
+                        hidden: !chart.getDataVisibility(i),
+                        index: i
+                      };
+                    }).filter(item => item !== null);
+                  }
+                  return [];
+                }
+              },
+              onClick: function(e, legendItem, legend) {
+                const index = legendItem.index;
+                const chart = legend.chart;
+                chart.toggleDataVisibility(index);
+                chart.update();
+              }
             },
             tooltip: {
               callbacks: {
@@ -153,11 +230,60 @@ export default {
                   const percentage = Math.round((value / total) * 100);
                   return `${label}: ${value} (${percentage}%)`;
                 }
-              }
+              },
+              backgroundColor: 'rgba(17, 24, 39, 0.8)',
+              titleFont: {
+                family: "'Avenir', 'Helvetica', 'Arial', sans-serif",
+                size: 13,
+                weight: 'bold'
+              },
+              bodyFont: {
+                family: "'Avenir', 'Helvetica', 'Arial', sans-serif",
+                size: 12
+              },
+              padding: 12,
+              cornerRadius: 6,
+              displayColors: true,
+              usePointStyle: true,
+              caretSize: 6
             }
-          }
+          },
+          animation: {
+            animateRotate: true,
+            animateScale: true,
+            duration: 1000,
+            easing: 'easeOutQuart'
+          },
+          cutout: '60%', // Slightly reduced from 65% for better visibility
+          radius: '90%'  // Increased from 85% for larger chart
         }
       });
+    },
+    
+    // Helper function to adjust color opacity
+    adjustColorOpacity(color, opacity) {
+      // Handle different color formats
+      
+      // If color is in hex format (#RRGGBB)
+      if (color.startsWith('#')) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+      
+      // If color is already in rgba format
+      if (color.startsWith('rgba')) {
+        return color.replace(/rgba\((.+),\s*[\d.]+\)/, `rgba($1, ${opacity})`);
+      }
+      
+      // If color is in rgb format
+      if (color.startsWith('rgb')) {
+        return color.replace('rgb', 'rgba').replace(')', `, ${opacity})`);
+      }
+      
+      // Default fallback - return original color
+      return color;
     }
   },
   beforeUnmount() {
@@ -171,8 +297,23 @@ export default {
 <style scoped>
 .chart-container {
   position: relative;
-  height: 300px;
+  height: 350px; /* Increased from 350px */
   width: 100%;
   margin-bottom: 20px;
+  padding: 10px;
+  border-radius: var(--rounded);
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.chart-container:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    height: 400px; /* Increased from 300px */
+  }
 }
 </style>
