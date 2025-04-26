@@ -79,16 +79,6 @@
                             </svg>
                             Copy
                         </button>
-                        <button @click="shareUrl" class="btn btn-success btn-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="5" r="3"></circle>
-                                <circle cx="6" cy="12" r="3"></circle>
-                                <circle cx="18" cy="19" r="3"></circle>
-                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                            </svg>
-                            Share
-                        </button>
                         <button @click="resetForm" class="btn btn-outline btn-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
@@ -177,19 +167,6 @@ export default {
             this.originalUrl = '';
             this.customCode = '';
             this.shortenedUrl = null;
-        },
-
-        shareUrl() {
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Check out this shortened URL',
-                    url: this.shortenedUrl
-                }).catch(err => {
-                    console.error('Error sharing URL:', err);
-                });
-            } else {
-                alert('Sharing is not supported on this browser.');
-            }
         }
     }
 };
@@ -222,17 +199,6 @@ export default {
     gap: 0.5rem;
     margin-top: 1rem;
     flex-wrap: wrap;
-}
-
-.btn-success {
-    background-color: #28a745;
-    color: white;
-    border-color: #28a745;
-}
-
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
 }
 
 .result-url {
