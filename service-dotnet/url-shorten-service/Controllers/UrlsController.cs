@@ -25,7 +25,27 @@ namespace url_shorten_service.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Url>>> GetUrl()
         {
-            return await _context.Url.ToListAsync();
+            // Lấy thông tin người dùng từ token JWT
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
+            // Nếu không có UserId và không phải admin, yêu cầu xác thực
+            if (string.IsNullOrEmpty(userId) && userRole != "admin")
+            {
+                return Unauthorized(new { error = "Authentication required" });
+            }
+
+            // Lọc URL theo UserId nếu không phải admin
+            if (userRole == "admin")
+            {
+                // Admin có thể xem tất cả URL
+                return await _context.Url.ToListAsync();
+            }
+            else
+            {
+                // Người dùng chỉ có thể xem URL của họ
+                return await _context.Url.Where(u => u.UserId == userId).ToListAsync();
+            }
         }
 
         // GET: r/{shortCode} - Chuyển hướng trực tiếp từ shortcode đến URL đích
@@ -130,11 +150,21 @@ namespace url_shorten_service.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Url>> GetUrl(int id)
         {
+            // Lấy thông tin người dùng từ token JWT
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
             var url = await _context.Url.FindAsync(id);
 
             if (url == null)
             {
                 return NotFound();
+            }
+
+            // Kiểm tra quyền truy cập - chỉ admin hoặc chủ sở hữu của URL mới có thể xem
+            if (userRole != "admin" && url.UserId != userId)
+            {
+                return StatusCode(403, new { error = "You don't have permission to view this URL" });
             }
 
             return url;
@@ -156,6 +186,15 @@ namespace url_shorten_service.Controllers
             if (existingUrl == null)
             {
                 return NotFound();
+            }
+
+            // Kiểm tra quyền truy cập - chỉ admin hoặc chủ sở hữu của URL mới có thể cập nhật
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
+            if (userRole != "admin" && existingUrl.UserId != userId)
+            {
+                return StatusCode(403, new { error = "You don't have permission to update this URL" });
             }
 
             // Nếu shortcode mới khác với shortcode cũ và không trống
@@ -277,14 +316,145 @@ namespace url_shorten_service.Controllers
             return CreatedAtAction("GetUrl", new { id = url.Id }, url);
         }
 
+        // POST: api/Urls/bulk
+        [HttpPost("bulk")]
+        public async Task<ActionResult<List<Url>>> BulkCreateUrls([FromBody] BulkUrlRequest request)
+        {
+            if (request == null || request.Urls == null || request.Urls.Count == 0)
+            {
+                return BadRequest(new { error = "No URLs provided" });
+            }
+
+            // Lấy UserId từ token JWT nếu có
+            string userId = HttpContext.Items["UserId"] as string;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { error = "Authentication required for bulk operations" });
+            }
+
+            List<Url> createdUrls = new List<Url>();
+            List<object> errors = new List<object>();
+
+            foreach (var urlData in request.Urls)
+            {
+                try
+                {
+                    // Validate URL format
+                    if (!Uri.TryCreate(urlData.OriginalUrl, UriKind.Absolute, out Uri uriResult) ||
+                        (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+                    {
+                        errors.Add(new { 
+                            originalUrl = urlData.OriginalUrl,
+                            error = "Invalid URL format. Please provide a valid HTTP or HTTPS URL."
+                        });
+                        continue;
+                    }
+
+                    Url newUrl = new Url
+                    {
+                        OriginalUrl = urlData.OriginalUrl,
+                        ShortCode = urlData.ShortCode,
+                        UserId = userId,
+                        CreatedAt = DateTime.UtcNow,
+                        ClickCount = 0,
+                        IsActive = true
+                    };
+
+                    // Xử lý custom short code nếu được cung cấp
+                    if (!string.IsNullOrEmpty(newUrl.ShortCode))
+                    {
+                        // Kiểm tra xem shortcode có hợp lệ không (chỉ chứa chữ cái, số, và các ký tự an toàn)
+                        var validCodePattern = new System.Text.RegularExpressions.Regex("^[a-zA-Z0-9_-]+$");
+                        if (!validCodePattern.IsMatch(newUrl.ShortCode))
+                        {
+                            errors.Add(new { 
+                                originalUrl = urlData.OriginalUrl,
+                                error = "Short code can only contain letters, numbers, underscore and hyphen."
+                            });
+                            continue;
+                        }
+
+                        // Kiểm tra xem shortcode đã tồn tại trong database chưa
+                        bool isExistingShortCode = await _context.Url.AnyAsync(u => u.ShortCode == newUrl.ShortCode);
+                        if (isExistingShortCode)
+                        {
+                            errors.Add(new { 
+                                originalUrl = urlData.OriginalUrl,
+                                error = "This short code is already in use. Please choose another one."
+                            });
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        // Tạo shortcode độc nhất nếu không được cung cấp
+                        bool isUnique = false;
+                        string newShortCode = "";
+
+                        while (!isUnique)
+                        {
+                            string guid = Guid.NewGuid().ToString("N");
+                            newShortCode = guid.Substring(0, 8);
+
+                            // Kiểm tra xem shortcode đã tồn tại chưa
+                            isUnique = !await _context.Url.AnyAsync(u => u.ShortCode == newShortCode);
+                        }
+
+                        newUrl.ShortCode = newShortCode;
+                    }
+
+                    _context.Url.Add(newUrl);
+                    await _context.SaveChangesAsync();
+                    createdUrls.Add(newUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error creating URL {urlData.OriginalUrl}: {ex.Message}");
+                    errors.Add(new { 
+                        originalUrl = urlData.OriginalUrl,
+                        error = "Failed to create shortened URL: " + ex.Message
+                    });
+                }
+            }
+
+            return Ok(new { 
+                success = createdUrls.Count,
+                failed = errors.Count,
+                urls = createdUrls,
+                errors = errors
+            });
+        }
+
+        // DTO cho yêu cầu rút gọn nhiều URL
+        public class BulkUrlRequest
+        {
+            public List<BulkUrlItem> Urls { get; set; }
+        }
+
+        public class BulkUrlItem
+        {
+            public string OriginalUrl { get; set; }
+            public string ShortCode { get; set; }
+        }
+
         // DELETE: api/Urls/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUrl(int id)
         {
+            // Lấy thông tin người dùng từ token JWT
+            string userId = HttpContext.Items["UserId"] as string;
+            string userRole = HttpContext.Items["UserRole"] as string;
+
             var url = await _context.Url.FindAsync(id);
             if (url == null)
             {
                 return NotFound();
+            }
+
+            // Kiểm tra quyền truy cập - chỉ admin hoặc chủ sở hữu của URL mới có thể xóa
+            if (userRole != "admin" && url.UserId != userId)
+            {
+                return StatusCode(403, new { error = "You don't have permission to delete this URL" });
             }
 
             _context.Url.Remove(url);

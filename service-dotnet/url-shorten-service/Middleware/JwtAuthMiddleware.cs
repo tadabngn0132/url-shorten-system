@@ -117,19 +117,39 @@ namespace url_shorten_service.Middleware
                 catch (SecurityTokenExpiredException ex)
                 {
                     Console.WriteLine($"Token expired: {ex.Message}");
+                    // Trả về lỗi 401 với thông báo rõ ràng khi token hết hạn
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"JWT token has expired\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
                 }
                 catch (SecurityTokenValidationException ex)
                 {
                     Console.WriteLine($"Token validation failed: {ex.Message}");
+                    // Trả về lỗi 401 với thông báo rõ ràng khi token không hợp lệ
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"Invalid JWT token\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Token processing error: {ex.GetType().Name} - {ex.Message}");
+                    // Trả về lỗi 500 khi có lỗi xử lý token
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"Error processing token\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"General JWT error: {ex.GetType().Name} - {ex.Message}");
+                // Trả về lỗi 500 khi có lỗi tổng quát
+                context.Response.StatusCode = 500;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"error\":\"General JWT error\", \"message\":\"{ex.Message}\"}}");
+                return; // Dừng pipeline, không gọi _next
             }
 
             await _next(context);

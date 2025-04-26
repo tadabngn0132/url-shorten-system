@@ -112,18 +112,23 @@ export default {
                     return;
                 }
 
-                // Process each URL
+                // Chuẩn bị dữ liệu cho API
+                const urlsData = [];
+                
                 for (const line of urlLines) {
                     if (!line.trim()) continue;
                     
                     let originalUrl = line.trim();
                     let customCode = '';
                     
-                    // Check if custom code is provided
+                    // Parse URL and custom code (format: url:code)
                     if (this.generateCustomCodes && line.includes(':')) {
-                        const parts = line.split(':');
-                        originalUrl = parts[0].trim();
-                        customCode = parts[1].trim();
+                        // Find the last colon in the string to separate URL from custom code
+                        const lastColonIndex = line.lastIndexOf(':');
+                        if (lastColonIndex > 0) { // Make sure there is content before the colon
+                            originalUrl = line.substring(0, lastColonIndex).trim();
+                            customCode = line.substring(lastColonIndex + 1).trim();
+                        }
                     }
 
                     // Validate URL
@@ -136,40 +141,56 @@ export default {
                         continue;
                     }
 
-                    // Prepare data for API call
-                    const payload = {
+                    // Add http:// or https:// if not present
+                    if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) {
+                        originalUrl = 'https://' + originalUrl;
+                    }
+
+                    // Validate custom code if provided
+                    if (customCode && !/^[a-zA-Z0-9_-]+$/.test(customCode)) {
+                        this.results.push({
+                            originalUrl,
+                            shortenedUrl: 'Mã rút gọn chỉ có thể chứa chữ cái, số, dấu gạch dưới và dấu gạch ngang',
+                            error: true
+                        });
+                        continue;
+                    }
+
+                    // Thêm URL vào danh sách cần rút gọn
+                    urlsData.push({
                         originalUrl,
-                        shortCode: customCode,
-                        createdAt: new Date().toISOString(),
-                        userId: this.$store.state.auth.user.id,
-                        isActive: true
-                    };
+                        shortCode: customCode
+                    });
+                }
 
-                    try {
-                        // Sử dụng API mới
-                        const response = await exportApis.urls.createUrl(payload);
-
-                        if (response && response.shortCode) {
+                // Gọi API bulk shorten thay vì gọi riêng lẻ
+                if (urlsData.length > 0) {
+                    const response = await exportApis.urls.bulkShorten(urlsData);
+                    
+                    // Xử lý kết quả trả về
+                    if (response.urls && response.urls.length > 0) {
+                        // Thêm các URL thành công vào kết quả
+                        for (const url of response.urls) {
                             this.results.push({
-                                originalUrl,
-                                shortenedUrl: `${window.location.origin}/${response.shortCode}`,
+                                originalUrl: url.originalUrl,
+                                shortenedUrl: `${window.location.origin}/${url.shortCode}`,
                                 error: false
                             });
                         }
-                    } catch (error) {
-                        console.error(`Error shortening URL ${originalUrl}:`, error);
-                        
-                        let errorMessage = 'Không thể rút gọn URL';
-                        if (error.userMessage) {
-                            errorMessage = error.userMessage;
-                        }
-                        
-                        this.results.push({
-                            originalUrl,
-                            shortenedUrl: errorMessage,
-                            error: true
-                        });
                     }
+                    
+                    // Xử lý các lỗi nếu có
+                    if (response.errors && response.errors.length > 0) {
+                        for (const errorItem of response.errors) {
+                            this.results.push({
+                                originalUrl: errorItem.originalUrl,
+                                shortenedUrl: errorItem.error,
+                                error: true
+                            });
+                        }
+                    }
+                    
+                    console.log(`Shortened ${response.success} URLs successfully, ${response.failed} failed`);
                 }
             } catch (error) {
                 console.error('Error processing URLs:', error);
@@ -181,6 +202,10 @@ export default {
         
         isValidUrl(string) {
             try {
+                // Make sure string has http:// or https:// protocol
+                if (!string.startsWith('http://') && !string.startsWith('https://')) {
+                    string = 'https://' + string;
+                }
                 new URL(string);
                 return true;
             } catch (_) {

@@ -9,6 +9,23 @@ const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:9999'
 // Debug log
 console.log('API_BASE_URL being used:', API_BASE_URL);
 
+// Tạo biến để theo dõi trạng thái làm mới token
+let isRefreshing = false;
+let failedQueue = [];
+
+// Hàm xử lý hàng đợi các request bị lỗi
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
 // Hàm lấy token
 const getToken = () => localStorage.getItem('token');
 
@@ -21,6 +38,39 @@ const clearToken = () => {
     if (store) {
         store.commit('auth/LOGOUT');
     }
+};
+
+// Hàm làm mới token bằng cách đăng nhập lại
+const refreshToken = async () => {
+  try {
+    // Lấy thông tin người dùng từ localStorage
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (!userData || !userData.username || !userData.password) {
+      console.log("No stored credentials found for token refresh: ", userData ? "missing username/password" : "no user data");
+      throw new Error('No stored credentials for refresh');
+    }
+    
+    console.log('Attempting to refresh token with stored credentials...');
+    
+    // Gọi API đăng nhập để lấy token mới
+    const response = await authApiClient.post('/login', {
+      username: userData.username,
+      password: userData.password
+    }, {
+      // Skip auth interceptor để tránh vòng lặp vô hạn
+      headers: { 'X-Skip-Auth-Interceptor': 'true' }
+    });
+    
+    // Lưu token mới
+    const newToken = response.data.token;
+    console.log('Token refreshed successfully');
+    localStorage.setItem('token', newToken);
+    
+    return newToken;
+  } catch (error) {
+    console.error('Failed to refresh token:', error);
+    throw error;
+  }
 };
 
 // Cấu hình header chung cho cả trường hợp có token hoặc không
@@ -80,6 +130,12 @@ const logRequest = (config) => {
     // Request interceptor
     client.interceptors.request.use(
         config => {
+            // Bỏ qua việc thêm token cho các request được đánh dấu
+            if (config.headers['X-Skip-Auth-Interceptor']) {
+                delete config.headers['X-Skip-Auth-Interceptor'];
+                return logRequest(config);
+            }
+            
             // Lấy token mới nhất từ localStorage mỗi khi gửi request
             const token = getToken();
             if (token) {
@@ -97,28 +153,70 @@ const logRequest = (config) => {
             console.log(`[API Response] ${response.status} for ${response.config.url}`);
             return response;
         },
-        error => {
+        async error => {
             // Log lỗi API để debug
             console.log(`[API Error] ${error.response?.status || 'Unknown'} for ${error.config?.url}`);
             console.log('[Error Details]', error.response?.data);
             
             // Xử lý lỗi 401 (Unauthorized)
             if (error.response && error.response.status === 401) {
-                const isLoggedOut = !getToken();
+                const isLoginRequest = error.config.url === '/login' || 
+                                       error.config.url.includes('/gateway/auth/login');
+                                       
+                // Bỏ qua xử lý cho request đăng nhập hoặc request đã được thử làm mới token
+                if (isLoginRequest || error.config.headers['X-Retry-After-Refresh']) {
+                    return Promise.reject(error);
+                }
                 
-                if (!isLoggedOut) {
-                    console.log('[Auth Error] Token hết hạn hoặc không hợp lệ - đăng xuất người dùng');
-                    // Xóa token và đăng xuất
-                    clearToken();
-                
-                    // Chuyển hướng về trang đăng nhập nếu cần
-                    if (router.currentRoute.path !== '/login') {
-                        router.replace('/login?expired=true').catch(err => {
-                            if (err.name !== 'NavigationDuplicated') {
-                                console.error('Navigation error:', err);
-                            }
-                        });
+                // Nếu chưa đang trong quá trình làm mới token
+                if (!isRefreshing) {
+                    isRefreshing = true;
+                    
+                    try {
+                        // Thử làm mới token
+                        const newToken = await refreshToken();
+                        
+                        // Phục hồi các request đang đợi với token mới
+                        processQueue(null, newToken);
+                        
+                        // Thử lại request gốc với token mới
+                        const originalRequest = error.config;
+                        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+                        originalRequest.headers['X-Retry-After-Refresh'] = 'true';
+                        
+                        isRefreshing = false;
+                        return axios(originalRequest);
+                    } catch (refreshError) {
+                        // Nếu không thể làm mới token, xử lý lỗi và đăng xuất
+                        processQueue(refreshError, null);
+                        isRefreshing = false;
+                        
+                        console.log('[Auth Error] Token không thể làm mới - đăng xuất người dùng');
+                        clearToken();
+                        
+                        // Chuyển hướng về trang đăng nhập nếu cần
+                        if (router.currentRoute.path !== '/login') {
+                            router.replace('/login?expired=true').catch(err => {
+                                if (err.name !== 'NavigationDuplicated') {
+                                    console.error('Navigation error:', err);
+                                }
+                            });
+                        }
+                        
+                        return Promise.reject(error);
                     }
+                } else {
+                    // Nếu đang trong quá trình làm mới token, thêm request hiện tại vào hàng đợi
+                    return new Promise((resolve, reject) => {
+                        failedQueue.push({ resolve, reject });
+                    }).then(newToken => {
+                        // Khi có token mới, thử lại request với token này
+                        error.config.headers['Authorization'] = `Bearer ${newToken}`;
+                        error.config.headers['X-Retry-After-Refresh'] = 'true';
+                        return axios(error.config);
+                    }).catch(err => {
+                        return Promise.reject(err);
+                    });
                 }
             }
             
@@ -132,5 +230,6 @@ export default {
     urlApiClient,
     authApiClient,
     getToken,
-    clearToken
+    clearToken,
+    refreshToken
 };

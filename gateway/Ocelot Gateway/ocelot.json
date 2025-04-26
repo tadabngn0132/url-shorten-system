@@ -132,6 +132,9 @@
       ],
       "UpstreamPathTemplate": "/gateway/urls",
       "UpstreamHttpMethod": [ "GET", "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -187,6 +190,9 @@
       ],
       "UpstreamPathTemplate": "/gateway/urls/{id}",
       "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -212,6 +218,9 @@
       ],
       "UpstreamPathTemplate": "/gateway/urls/transfer-ownership",
       "UpstreamHttpMethod": [ "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -233,10 +242,6 @@
       ],
       "UpstreamPathTemplate": "/gateway/urls/dashboard-stats/{urlId}",
       "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "DelegatingHandlers": [],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -261,10 +266,6 @@
       ],
       "UpstreamPathTemplate": "/gateway/urls/dashboard-stats",
       "UpstreamHttpMethod": [ "GET" ],
-      "AuthenticationOptions": {
-        "AuthenticationProviderKey": "Bearer"
-      },
-      "DelegatingHandlers": [],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -275,6 +276,30 @@
         "PeriodTimespan": 1,
         "Limit": 5,
         "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/bulk",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/bulk",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "PeriodTimespan": 1,
+        "Limit": 3,
+        "QuotaExceededMessage": "Too many bulk shortening requests",
         "HttpStatusCode": 429
       }
     }

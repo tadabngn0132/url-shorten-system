@@ -8,6 +8,11 @@
             </router-link>
         </div>
         
+        <!-- Thông báo thành công -->
+        <div v-if="notification" class="notification success-notification">
+            {{ notification }}
+        </div>
+        
         <div v-if="loading" class="loading">
             Loading URLs...
         </div>
@@ -20,6 +25,8 @@
                 :key="url.id"
                 :url="url"
                 @remove="removeUrl"
+                @update="updateUrl"
+                @show-notification="showNotification"
             />
         </div>
         
@@ -43,6 +50,8 @@ export default {
         return {
             urls: [],
             loading: true,
+            notification: null,
+            notificationTimeout: null
         }
     },
     computed: {
@@ -122,6 +131,41 @@ export default {
             }
         },
         
+        // Phương thức cập nhật URL
+        updateUrl(updatedUrl) {
+            console.log('UrlList received updated URL:', updatedUrl);
+            
+            if (!updatedUrl || !updatedUrl.id) {
+                console.error('Invalid updated URL object:', updatedUrl);
+                return;
+            }
+            
+            const index = this.urls.findIndex(url => url.id === updatedUrl.id);
+            if (index !== -1) {
+                // Sử dụng Vue.set để đảm bảo cập nhật reactive
+                this.$set(this.urls, index, updatedUrl);
+                
+                // Hiển thị thông báo cập nhật thành công
+                this.showNotification('URL đã được cập nhật thành công');
+            } else {
+                console.error('Could not find URL with ID', updatedUrl.id);
+            }
+        },
+        
+        // Hiển thị thông báo
+        showNotification(message) {
+            this.notification = message;
+            
+            // Xóa thông báo sau 3 giây
+            if (this.notificationTimeout) {
+                clearTimeout(this.notificationTimeout);
+            }
+            
+            this.notificationTimeout = setTimeout(() => {
+                this.notification = null;
+            }, 3000);
+        },
+        
         // Save a new URL ID to guest storage
         saveGuestUrlId(urlId) {
             if (!this.isAuthenticated) {
@@ -143,6 +187,12 @@ export default {
         // Refresh URLs when auth state changes
         isAuthenticated() {
             this.fetchUrls();
+        }
+    },
+    beforeDestroy() {
+        // Xóa timeout khi component bị hủy
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
         }
     }
 }
@@ -208,5 +258,19 @@ h2 {
 
 .guest-mode-info a:hover {
     text-decoration: underline;
+}
+
+.notification {
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.success-notification {
+    background-color: #f0f9eb;
+    color: #67c23a;
+    border: 1px solid #e1f3d8;
 }
 </style>

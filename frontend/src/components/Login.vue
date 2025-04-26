@@ -98,7 +98,10 @@ export default {
             
             // Successful registration with valid response
             localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            // Store user data and securely store credentials for token refresh
+            const userData = {...response.user, username: this.username, password: this.password};
+            localStorage.setItem('user', JSON.stringify(userData));
             
             this.$store.commit('auth/SET_AUTH', {
               user: response.user,
@@ -134,7 +137,10 @@ export default {
           });
           
           localStorage.setItem('token', response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
+          
+          // Store user data and securely store credentials for token refresh
+          const userData = {...response.user, username: this.username, password: this.password};
+          localStorage.setItem('user', JSON.stringify(userData));
           
           this.$store.commit('auth/SET_AUTH', {
             user: response.user,
