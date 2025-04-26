@@ -1,28 +1,41 @@
 <template>
-    <nav class="navbar">
-        <div class="logo">URL Shortener</div>
-        <div class="nav-links">
-            <router-link to="/">Home</router-link>
-            <router-link to="/about">About</router-link>
-            
-            <!-- Show if user is authenticated -->
-            <router-link v-if="isAuthenticated" to="/dashboard">Dashboard</router-link>
-            <router-link v-if="isAuthenticated" to="/bulk-shortener">Bulk Shortener</router-link>
-            
-            <!-- Auth links -->
-            <template v-if="isAuthenticated">
-                <div class="user-menu" @click="toggleUserMenu">
-                    <span class="username">{{ currentUser.username }}</span>
-                    <div class="dropdown-menu" v-if="showUserMenu">
-                        <router-link to="/profile">Profile</router-link>
-                        <a href="#" @click.prevent="handleLogout">Logout</a>
+    <nav class="nav-links">
+        <router-link to="/" class="nav-link">Home</router-link>
+        <router-link to="/about" class="nav-link">About</router-link>
+        
+        <!-- Show if user is authenticated -->
+        <router-link v-if="isAuthenticated" to="/dashboard" class="nav-link">Dashboard</router-link>
+        <router-link v-if="isAuthenticated" to="/bulk-shortener" class="nav-link">Bulk Shortener</router-link>
+        
+        <!-- Auth links -->
+        <template v-if="isAuthenticated">
+            <div class="user-menu">
+                <div class="user-menu-button" @click="toggleUserMenu">
+                    <div class="avatar">
+                        {{ userInitials }}
                     </div>
+                    <span>{{ currentUser.username }}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                 </div>
-            </template>
-            <template v-else>
-                <router-link to="/login" class="auth-button">Login</router-link>
-            </template>
-        </div>
+                <div class="dropdown-menu" v-if="showUserMenu">
+                    <router-link to="/profile" class="dropdown-item">Profile</router-link>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" @click.prevent="handleLogout" class="dropdown-item">Logout</a>
+                </div>
+            </div>
+        </template>
+        <template v-else>
+            <router-link to="/login" class="auth-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                </svg>
+                <span>Login</span>
+            </router-link>
+        </template>
     </nav>
 </template>
 
@@ -40,6 +53,10 @@ export default {
         ...mapGetters(['isAuthenticated']),
         currentUser() {
             return this.$store.state.auth.user;
+        },
+        userInitials() {
+            if (!this.currentUser || !this.currentUser.username) return '';
+            return this.currentUser.username.substring(0, 2).toUpperCase();
         }
     },
     methods: {
@@ -72,95 +89,116 @@ export default {
 </script>
 
 <style scoped>
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background-color: white;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #42b983;
-}
-
+/* Local styles for navbar component */
 .nav-links {
     display: flex;
     align-items: center;
-    text-align: center;
-    gap: 20px;
+    gap: 1.5rem;
 }
 
-.nav-links a {
-    color: #2c3e50;
+.nav-link {
+    color: var(--dark);
+    font-weight: 500;
+    padding: 0.5rem;
+    border-radius: var(--rounded);
     text-decoration: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    transition: background-color 0.3s;
+    transition: all 0.2s ease;
 }
 
-.nav-links a:hover {
-    background-color: #f0f0f0;
-}
-
-.nav-links a.router-link-active {
-    color: #42b983;
-    font-weight: bold;
+.nav-link:hover, .nav-link.router-link-active {
+    color: var(--primary);
+    background-color: rgba(59, 130, 246, 0.05);
 }
 
 .auth-button {
-    background-color: #42b983;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--primary);
     color: white !important;
-    padding: 8px 15px !important;
-    border-radius: 4px;
     font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: var(--rounded);
+    text-decoration: none;
+    transition: background-color 0.2s ease;
 }
 
 .auth-button:hover {
-    background-color: #3aa876 !important;
+    background-color: var(--primary-dark);
+    text-decoration: none;
 }
 
 .user-menu {
     position: relative;
+}
+
+.user-menu-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: var(--rounded);
     cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 3px;
-    transition: background-color 0.3s;
+    transition: background-color 0.2s ease;
 }
 
-.user-menu:hover {
-    background-color: #f0f0f0;
+.user-menu-button:hover {
+    background-color: rgba(59, 130, 246, 0.05);
 }
 
-.username {
-    font-weight: 500;
-    color: #42b983;
+.avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--rounded-full);
+    background-color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
 }
 
 .dropdown-menu {
     position: absolute;
     top: 100%;
     right: 0;
+    width: 200px;
     background-color: white;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 150px;
-    z-index: 100;
-    margin-top: 5px;
+    border-radius: var(--rounded-md);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    margin-top: 0.5rem;
+    border: 1px solid var(--gray-light);
+    z-index: 50;
 }
 
-.dropdown-menu a {
+.dropdown-item {
     display: block;
-    padding: 10px 15px;
-    color: #2c3e50;
+    padding: 0.75rem 1rem;
+    color: var(--dark);
     text-decoration: none;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease;
 }
 
-.dropdown-menu a:hover {
-    background-color: #f5f5f5;
+.dropdown-item:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    text-decoration: none;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--gray-light);
+    margin: 0.25rem 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .nav-links {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 }
 </style>

@@ -1,5 +1,6 @@
 using System;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -22,89 +23,136 @@ namespace url_shorten_service.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            //string path = context.Request.Path.Value.ToLower();
-            //string method = context.Request.Method;
+            Console.WriteLine($"Processing request: {context.Request.Method} {context.Request.Path}");
+            
+            string authHeader = context.Request.Headers["Authorization"];
+            if (authHeader == null || !authHeader.StartsWith("Bearer "))
+            {
+                Console.WriteLine($"No valid Authorization header found for {context.Request.Path}");
+                // Tiếp tục thực hiện pipeline mà không đặt thông tin người dùng
+                await _next(context);
+                return;
+            }
 
-            //bool requireAuth =
-            //    (method == "PUT" || method == "DELETE") ||
-            //    (path.Contains("/admin") || path.Contains("/dashboard"));
+            string token = authHeader.Substring("Bearer ".Length).Trim();
+            Console.WriteLine($"Token found in request: {token.Substring(0, Math.Min(10, token.Length))}...");
 
-            //if (!requireAuth)
-            //{
-            //    await _next(context);
-            //    return;
-            //}
+            try
+            {
+                // Sử dụng cùng JWT secret với Node service
+                var jwtSecret = _configuration["JwtSettings:Secret"] ??
+                    Environment.GetEnvironmentVariable("JWT_SECRET") ??
+                    "t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL";
+                
+                Console.WriteLine($"Using JWT secret key (first 5 chars): {jwtSecret.Substring(0, Math.Min(5, jwtSecret.Length))}...");
 
-            //string authHeader = context.Request.Headers["Authorization"];
-            //if (authHeader == null || !authHeader.StartsWith("Bearer "))
-            //{
-            //    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            //    await context.Response.WriteAsync("Authentication required");
-            //    return;
-            //}
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes(jwtSecret);
 
-            //string token = authHeader.Substring("Bearer ".Length).Trim();
+                try 
+                {
+                    var tokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.Zero
+                    };
 
-            //try
-            //{
-            //    // Sử dụng cùng JWT secret với Node service
-            //    var tokenHandler = new JwtSecurityTokenHandler();
-            //    var key = Encoding.ASCII.GetBytes(
-            //        _configuration["JwtSettings:Secret"] ??
-            //        Environment.GetEnvironmentVariable("JWT_SECRET") ??
-            //        "t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL");
+                    tokenHandler.ValidateToken(token, tokenValidationParameters, out var validatedToken);
+                    Console.WriteLine("Token validated successfully");
 
-            //    tokenHandler.ValidateToken(token, new TokenValidationParameters
-            //    {
-            //        ValidateIssuerSigningKey = true,
-            //        IssuerSigningKey = new SymmetricSecurityKey(key),
-            //        ValidateIssuer = false,
-            //        ValidateAudience = false,
-            //        ClockSkew = TimeSpan.Zero
-            //    }, out var validatedToken);
+                    var jwtToken = (JwtSecurityToken)validatedToken;
 
-            //    var jwtToken = (JwtSecurityToken)validatedToken;
+                    // Cố gắng lấy userId và xử lý an toàn
+                    string userId = null;
+                    try
+                    {
+                        userId = jwtToken.Claims.FirstOrDefault(x => x.Type == "id")?.Value;
+                        Console.WriteLine($"Extracted userId: {userId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error extracting userId: {ex.Message}");
+                    }
 
-            //    // Cố gắng lấy userId và xử lý an toàn
-            //    string userId = null;
-            //    try
-            //    {
-            //        userId = jwtToken.Claims.FirstOrDefault(x => x.Type == "id")?.Value;
-            //    }
-            //    catch { /* Bỏ qua lỗi */ }
+                    // Thêm thông tin người dùng vào HttpContext
+                    context.Items["UserId"] = userId;
 
-            //    // Thêm thông tin người dùng vào HttpContext
-            //    context.Items["UserId"] = userId;
+                    // Lấy username an toàn
+                    try
+                    {
+                        var username = jwtToken.Claims.FirstOrDefault(x => x.Type == "username")?.Value ?? "unknown";
+                        context.Items["Username"] = username;
+                        Console.WriteLine($"Extracted username: {username}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error extracting username: {ex.Message}");
+                        context.Items["Username"] = "unknown";
+                    }
 
-            //    // Lấy username an toàn
-            //    try
-            //    {
-            //        context.Items["Username"] = jwtToken.Claims.FirstOrDefault(x => x.Type == "username")?.Value ?? "unknown";
-            //    }
-            //    catch
-            //    {
-            //        context.Items["Username"] = "unknown";
-            //    }
+                    // Lấy role an toàn
+                    try
+                    {
+                        var userRole = jwtToken.Claims.FirstOrDefault(x => x.Type == "role")?.Value ?? "user";
+                        context.Items["UserRole"] = userRole;
+                        Console.WriteLine($"Extracted role: {userRole}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error extracting role: {ex.Message}");
+                        context.Items["UserRole"] = "user";
+                    }
 
-            //    // Lấy role an toàn
-            //    try
-            //    {
-            //        context.Items["UserRole"] = jwtToken.Claims.FirstOrDefault(x => x.Type == "role")?.Value ?? "user";
-            //    }
-            //    catch
-            //    {
-            //        context.Items["UserRole"] = "user";
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            //    await context.Response.WriteAsync($"Invalid token: {ex.Message}");
-            //    return;
-            //}
+                    // Show all claims for debugging
+                    Console.WriteLine("All token claims:");
+                    foreach (var claim in jwtToken.Claims)
+                    {
+                        Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
+                    }
+                }
+                catch (SecurityTokenExpiredException ex)
+                {
+                    Console.WriteLine($"Token expired: {ex.Message}");
+                    // Trả về lỗi 401 với thông báo rõ ràng khi token hết hạn
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"JWT token has expired\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
+                }
+                catch (SecurityTokenValidationException ex)
+                {
+                    Console.WriteLine($"Token validation failed: {ex.Message}");
+                    // Trả về lỗi 401 với thông báo rõ ràng khi token không hợp lệ
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"Invalid JWT token\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Token processing error: {ex.GetType().Name} - {ex.Message}");
+                    // Trả về lỗi 500 khi có lỗi xử lý token
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsync($"{{\"error\":\"Error processing token\", \"message\":\"{ex.Message}\"}}");
+                    return; // Dừng pipeline, không gọi _next
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"General JWT error: {ex.GetType().Name} - {ex.Message}");
+                // Trả về lỗi 500 khi có lỗi tổng quát
+                context.Response.StatusCode = 500;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync($"{{\"error\":\"General JWT error\", \"message\":\"{ex.Message}\"}}");
+                return; // Dừng pipeline, không gọi _next
+            }
 
             await _next(context);
-            return;
         }
     }
 

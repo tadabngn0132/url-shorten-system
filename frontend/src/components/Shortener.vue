@@ -1,54 +1,93 @@
-<!-- frontend/src/components/Shortener.vue -->
 <template>
-    <div class="shortener">
-        <h1>URL Shortener</h1>
-        <p class="description">Enter the URL you want to shorten below</p>
+    <div class="shortener-container">
+        <div class="shortener-hero">
+            <h1 class="shortener-title">Shorten Your Links</h1>
+            <p class="shortener-description">Create short, memorable links in seconds with our powerful URL shortener tool.</p>
+        </div>
 
-        <form @submit.prevent="shortenUrl" class="shortener-form">
-            <div class="input-group">
-                <input
-                    type="url"
-                    v-model="originalUrl"
-                    placeholder="Enter long URL (e.g., https://example.com)"
-                    required
-                    class="url-input"
-                />
+        <div class="card">
+            <div class="card-body">
+                <form @submit.prevent="shortenUrl" class="shortener-form">
+                    <div class="form-group">
+                        <label class="form-label" for="original-url">Enter a long URL</label>
+                        <input
+                            type="url"
+                            id="original-url"
+                            v-model="originalUrl"
+                            placeholder="https://example.com/very/long/url/that/needs/shortening"
+                            required
+                            class="form-input"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="custom-code">Custom short code (optional)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">{{ baseUrl }}/</span>
+                            <input
+                                type="text"
+                                id="custom-code"
+                                v-model="customCode"
+                                placeholder="my-custom-url"
+                                class="form-input"
+                            />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" :disabled="isSubmitting">
+                        <svg v-if="isSubmitting" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="loading-icon">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                        </svg>
+                        <span v-else>Shorten URL</span>
+                    </button>
+
+                    <!-- Login notice for guest users -->
+                    <div v-if="!isAuthenticated" class="alert alert-info mt-3">
+                        <div class="flex">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            <div>
+                                <router-link to="/login">Log in</router-link> or 
+                                <router-link to="/login?register=true">register</router-link> 
+                                for advanced URL management and bulk shortening.
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
+        </div>
 
-            <div class="input-group">
-                <input
-                    type="text"
-                    v-model="customCode"
-                    placeholder="Custom code (optional)"
-                    class="code-input"
-                />
-            </div>
-
-            <button type="submit" class="btn-shorten" :disabled="isSubmitting">
-                {{ isSubmitting ? 'Processing...' : 'Shorten URL' }}
-            </button>
-
-            <!-- Thêm thông báo về tính năng nâng cao cho người dùng đăng nhập -->
-            <div v-if="!isAuthenticated" class="login-prompt">
-                <p>
-                    <router-link to="/login">Log in</router-link> or 
-                    <router-link to="/login">register</router-link> 
-                    for advanced URL management and bulk shortening.
-                </p>
-            </div>
-        </form>
-
-        <div v-if="error" class="error-message">
+        <div v-if="error" class="alert alert-danger mt-4">
             {{ error }}
         </div>
 
-        <div v-if="shortenedUrl" class="result">
-            <h3>Your shortened URL:</h3>
-            <div class="shortened-url">
-                <a :href="shortenedUrl" target="_blank">{{ shortenedUrl }}</a>
-                <button @click="copyToClipboard(shortenedUrl)" class="btn-copy">
-                    Copy
-                </button>
+        <div v-if="shortenedUrl" class="card mt-4 result-card">
+            <div class="card-header">
+                <h3>Your shortened URL is ready!</h3>
+            </div>
+            <div class="card-body">
+                <div class="result-container">
+                    <a :href="shortenedUrl" target="_blank" class="result-url">{{ shortenedUrl }}</a>
+                    <div class="result-actions">
+                        <button @click="copyToClipboard(shortenedUrl)" class="btn btn-primary btn-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1-2 2v1"></path>
+                            </svg>
+                            Copy
+                        </button>
+                        <button @click="resetForm" class="btn btn-outline btn-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                            </svg>
+                            Create Another
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -66,7 +105,8 @@ export default {
             customCode: '',
             isSubmitting: false,
             shortenedUrl: null,
-            error: ''
+            error: '',
+            baseUrl: window.location.origin
         };
     },
     computed: {
@@ -81,29 +121,30 @@ export default {
             this.isSubmitting = true;
             
             try {
-                // Chuẩn bị dữ liệu
+                // Prepare data
                 const urlData = {
                     originalUrl: this.originalUrl,
                     shortCode: this.customCode || '',
                     isActive: true,
-                    userId: this.isAuthenticated ? this.auth.user.id : "guest" // Lấy ID người dùng nếu đã đăng nhập
+                    userId: this.isAuthenticated ? this.auth.user.id : "guest"
                 };
                 
-                // Gọi API
+                // Call API
                 const response = await exportApis.urls.createUrl(urlData);
                 
                 if (response && response.shortCode) {
-                    // Lưu URL ID vào localStorage cho khách
+                    // Save URL ID to localStorage for guests
                     if (!this.isAuthenticated) {
                         const guestUrlIds = JSON.parse(localStorage.getItem('guestUrlIds') || '[]');
                         guestUrlIds.push(response.id);
                         localStorage.setItem('guestUrlIds', JSON.stringify(guestUrlIds));
                     }
                     
-                    // Hiển thị kết quả
+                    // Show result
                     this.shortenedUrl = `${window.location.origin}/${response.shortCode}`;
-                    this.originalUrl = '';
-                    this.customCode = '';
+                    
+                    // Emit event with new URL data to update UrlList
+                    this.$emit('url-shortened', response);
                 }
             } catch (error) {
                 console.error('Error shortening URL:', error);
@@ -115,122 +156,66 @@ export default {
         
         copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('URL đã được sao chép vào clipboard!');
+                // Could use toast notification here
+                alert('URL copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
+        },
+        
+        resetForm() {
+            this.originalUrl = '';
+            this.customCode = '';
+            this.shortenedUrl = null;
         }
     }
 };
 </script>
 
 <style scoped>
-.shortener {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    text-align: center;
+.loading-icon {
+    animation: spin 1s linear infinite;
 }
 
-h1 {
-    color: #2c3e50;
-    margin-bottom: 10px;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-.description {
-    color: #666;
-    margin-bottom: 30px;
+.mt-3 {
+    margin-top: 1rem;
 }
 
-.shortener-form {
+.mt-4 {
+    margin-top: 1.5rem;
+}
+
+.result-card {
+    border-left: 4px solid var(--primary);
+}
+
+.result-actions {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
 }
 
-.input-group {
-    width: 100%;
-}
-
-.url-input, .code-input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-}
-
-.btn-shorten {
-    background-color: #42b983;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.btn-shorten:hover {
-    background-color: #3aa876;
-}
-
-.btn-shorten:disabled {
-    background-color: #95d5b2;
-    cursor: not-allowed;
-}
-
-.error-message {
-    color: #f56c6c;
-    margin-bottom: 15px;
-}
-
-.result {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
-}
-
-.shortened-url {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.shortened-url a {
-    color: #42b983;
-    font-weight: bold;
+.result-url {
+    display: block;
+    font-size: 1.1rem;
     word-break: break-all;
-}
-
-.btn-copy {
-    background-color: #42b983;
-    color: white;
-    padding: 8px 15px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-.login-prompt {
-    margin-top: 15px;
-    padding: 10px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    font-size: 0.9rem;
-}
-
-.login-prompt a {
-    color: #42b983;
-    font-weight: bold;
+    color: var(--primary);
     text-decoration: none;
+    margin-bottom: 0.5rem;
 }
 
-.login-prompt a:hover {
+.result-url:hover {
     text-decoration: underline;
+}
+
+.result-container {
+    padding: 0.5rem;
+    border-radius: var(--rounded);
 }
 </style>

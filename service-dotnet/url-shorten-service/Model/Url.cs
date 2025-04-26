@@ -9,9 +9,12 @@
         public string UserId { get; set; }
         public bool IsActive { get; set; }
 
-        // Trường mới
+        // Trường thống kê cơ bản
         public int? ClickCount { get; set; } = 0;
         public DateTime? LastAccessed { get; set; }
         public DateTime? ExpiryDate { get; set; }
+
+        // Navigation property - danh sách thông tin chi tiết về các lượt click
+        public virtual ICollection<ClickInfo> ClickDetails { get; set; } = new List<ClickInfo>();
     }
 }
