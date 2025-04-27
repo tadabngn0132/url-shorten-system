@@ -1,0 +1,331 @@
+{
+  "GlobalConfiguration": {
+    "BaseUrl": "http://gateway:9999",
+    "RateLimitOptions": {
+      "ClientIdHeader": "ClientId",
+      "DisableRateLimitHeaders": false,
+      "HttpStatusCode": 429,
+      "QuotaExceededMessage": "API rate limit exceeded",
+      "RateLimitCounterPrefix": "ocelot"
+    }
+  },
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/login",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/login",
+      "UpstreamHttpMethod": [ "POST" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too many login attempts, please try again later",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/register",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/register",
+      "UpstreamHttpMethod": [ "POST" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1d",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Registration limit exceeded",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/change-password",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/change-password",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10m",
+        "PeriodTimespan": 1,
+        "Limit": 3,
+        "QuotaExceededMessage": "Too many password change attempts",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/profile",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/profile",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/verify",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth/verify",
+      "UpstreamHttpMethod": [ "GET" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 20,
+        "QuotaExceededMessage": "Too many verification requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-service",
+          "Port": 5000
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/auth",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls",
+      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "Region": "url-cache",
+        "TtlSeconds": 15
+      },
+      "AddHeadersToRequest": {
+        "X-Rate-Limit-Limit": "RateLimit-Limit",
+        "X-Rate-Limit-Remaining": "RateLimit-Remaining",
+        "X-Rate-Limit-Reset": "RateLimit-Reset"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/redirect/{shortCode}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
+      "UpstreamHttpMethod": [ "GET" ],
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "Region": "url-redirect-cache",
+        "TtlSeconds": 60
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/{id}",
+      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 15,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      },
+      "FileCacheOptions": {
+        "Region": "url-cache",
+        "TtlSeconds": 15
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/{id}/toggle-status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/{id}/toggle-status",
+      "UpstreamHttpMethod": [ "PUT" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Too many status toggle requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/transfer-ownership",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/transfer-ownership",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/dashboard-stats/{urlId}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/dashboard-stats/{urlId}",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 10,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/dashboard-stats",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/dashboard-stats",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "5s",
+        "PeriodTimespan": 1,
+        "Limit": 5,
+        "QuotaExceededMessage": "Too Many Requests",
+        "HttpStatusCode": 429
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/Urls/bulk",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "url-service",
+          "Port": 6996
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/urls/bulk",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AddHeadersToRequest": {
+        "Authorization": "{Request.Headers.Authorization}"
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "10s",
+        "PeriodTimespan": 1,
+        "Limit": 3,
+        "QuotaExceededMessage": "Too many bulk shortening requests",
+        "HttpStatusCode": 429
+      }
+    }
+  ]
+}

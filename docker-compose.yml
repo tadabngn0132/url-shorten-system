@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Frontend Vue.js application
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - gateway
+    networks:
+      - frontend-network
+
+  # API Gateway (Ocelot)
+  gateway:
+    build:
+      context: .
+      dockerfile: ./docker/gateway/Dockerfile
+    volumes:
+      - ./docker/gateway/ocelot.json:/app/ocelot.json
+    ports:
+      - "9999:9999"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+    depends_on:
+      - auth-service
+      - url-service
+    networks:
+      - frontend-network
+      - backend-network
+
+  # Auth Service (Node.js)
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./docker/auth-service/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+      - MONGODB_URI=mongodb://mongo:27017/url-shortener-auth
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    networks:
+      - backend-network
+
+  # URL Service (.NET Core)
+  url-service:
+    build:
+      context: .
+      dockerfile: ./docker/url-service/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+      - ConnectionStrings__url_shorten_serviceContext=Server=sqlserver;Database=ShortenURL;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+    ports:
+      - "6996:6996"
+    depends_on:
+      - sqlserver
+    networks:
+      - backend-network
+
+  # MongoDB (for Auth Service)
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - backend-network
+
+  # SQL Server (for URL Service)
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrong!Passw0rd
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - backend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  sqlserver-data:
