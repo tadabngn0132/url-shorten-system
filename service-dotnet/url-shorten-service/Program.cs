@@ -29,19 +29,23 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Tự động apply migrations khi app khởi động (cho Railway deployment)
+// Tự động tạo database khi app khởi động (không cần migrations)
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var dbContext = services.GetRequiredService<url_shorten_serviceContext>();
-        dbContext.Database.Migrate();
-        Console.WriteLine("✅ Database migrations applied successfully!");
+
+        // EnsureCreated: Tạo database từ models, không cần migrations files
+        dbContext.Database.EnsureCreated();
+
+        Console.WriteLine("✅ Database created successfully!");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Error during migration: {ex.Message}");
+        Console.WriteLine($"❌ Error creating database: {ex.Message}");
+        Console.WriteLine($"Connection string: {dbContext.Database.GetConnectionString()}");
         throw;
     }
 }
