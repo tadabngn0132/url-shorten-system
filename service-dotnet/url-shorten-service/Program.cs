@@ -6,7 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Cấu hình DbContext
 builder.Services.AddDbContext<url_shorten_serviceContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("url_shorten_serviceContext") ?? throw new InvalidOperationException("Connection string 'url_shorten_serviceContext' not found.")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("url_shorten_serviceContext") ?? throw new InvalidOperationException("Connection string 'url_shorten_serviceContext' not found.")));
 
 // Cấu hình CORS
 builder.Services.AddCors(options =>
