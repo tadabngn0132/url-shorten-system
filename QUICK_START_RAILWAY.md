@@ -2,128 +2,397 @@
 
 ## ?? Checklist tr??c khi deploy
 
-- [ ] Account Railway ?ã t?o
-- [ ] Repository ?ã push lên GitHub
-- [ ] ?ã ??c `RAILWAY_DEPLOYMENT.md`
-- [ ] ?ã chu?n b? các bi?n môi tr??ng
+- [ ] Account Railway ?ï¿½ t?o
+- [ ] Repository ?ï¿½ push lï¿½n GitHub
+- [ ] ?ï¿½ ??c `RAILWAY_DEPLOYMENT.md`
+- [ ] ?ï¿½ chu?n b? cï¿½c bi?n mï¿½i tr??ng
 
-## ?? Các b??c deploy nhanh
+## ?? QUAN TR?NG: Monorepo Configuration
+
+D? ï¿½n nï¿½y lï¿½ **monorepo** v?i nhi?u services. B?n ph?i:
+1. **Deploy m?i service riï¿½ng bi?t** (4 services = 4 deployments)
+2. **B?t bu?c set Root Directory** cho T?NG service
+3. Railway s? ch? build code trong Root Directory ?ï¿½ ch?n
+
+**L?u ï¿½**: N?u khï¿½ng set Root Directory, Railway s? bï¿½o l?i "could not determine how to build the app"
+
+## ?? Cï¿½c b??c deploy nhanh
 
 ### 1. T?o Railway Project
 ```
-1. Vào railway.app
+1. Vï¿½o railway.app
 2. Click "New Project"
-3. Ch?n "Deploy from GitHub repo"
-4. Authorize và ch?n repo: url-shorten-system
+3. Ch?n "Empty Project" (t?o project tr?ng tr??c)
+4. ??t tï¿½n project: "URL Shortener System"
 ```
 
-### 2. Thêm Databases
+### 2. Thï¿½m Databases
 ```
+Trong project v?a t?o:
 - Click "+ New" ? Database ? MongoDB
-- Click "+ New" ? Database ? PostgreSQL (n?u không dùng SQL Server)
+- Click "+ New" ? Database ? PostgreSQL (n?u khï¿½ng dï¿½ng SQL Server)
+
+??i databases kh?i ??ng xong (status = Active)
 ```
 
 ### 3. Deploy Services (theo th? t?)
 
 #### Service 1: service-node
+
+**B??c 1**: Thï¿½m service
 ```
-Root Directory: service-node
-Bi?n môi tr??ng:
-  - PORT=5000
-  - MONGODB_URI=${{MongoDB.MONGO_URL}}
-  - JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
-  - NODE_ENV=production
+1. Click "+ New" ? "GitHub Repo"
+2. Authorize GitHub n?u ch?a
+3. Ch?n repository: "url-shorten-system"
+4. Railway s? t?o service m?i
 ```
+
+**B??c 2**: Configure service ?? QUAN TR?NG
+```
+1. Click vï¿½o service v?a t?o
+2. Settings ? General ? Service Name: ??i thï¿½nh "service-node"
+3. Settings ? Source ? Root Directory: "/service-node" ? B?T BU?C! (cï¿½ d?u /)
+4. Save Changes
+
+L?u ï¿½: Railway yï¿½u c?u d?u / ? ??u cho Root Directory
+```
+
+**B??c 3**: Set bi?n mï¿½i tr??ng
+```
+Variables tab ? Add variables:
+  PORT=5000
+  MONGODB_URI=${{MongoDB.MONGO_URL}}
+  JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+  NODE_ENV=production
+```
+
+**B??c 4**: Deploy
+```
+- Railway s? t? ??ng trigger build sau khi save
+- Check tab "Deployments" ?? xem progress
+- ??i build thï¿½nh cï¿½ng (status = Success)
+```
+
+---
 
 #### Service 2: service-dotnet
+
+**B??c 1**: Thï¿½m service m?i
 ```
-Root Directory: service-dotnet
-Bi?n môi tr??ng:
-  - ASPNETCORE_ENVIRONMENT=Production
-  - ASPNETCORE_URLS=http://+:8080
-  - ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}
-  - JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+1. V? Project view
+2. Click "+ New" ? "GitHub Repo"
+3. Ch?n repository: "url-shorten-system" (cï¿½ng repo)
+4. Railway s? t?o service m?i (service th? 2)
 ```
+
+**B??c 2**: Configure service ?? QUAN TR?NG
+```
+1. Click vï¿½o service v?a t?o
+2. Settings ? General ? Service Name: "service-dotnet"
+3. Settings ? Source ? Root Directory: "service-dotnet" ? B?T BU?C!
+4. Save Changes
+```
+
+**B??c 3**: Set bi?n mï¿½i tr??ng
+```
+Variables tab:
+  ASPNETCORE_ENVIRONMENT=Production
+  ASPNETCORE_URLS=http://+:8080
+  ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}
+  JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+  JwtSettings__ExpiryMinutes=1440
+  JwtSettings__Issuer=UrlShortener
+```
+
+**L?u ï¿½**: N?u dï¿½ng PostgreSQL, ph?i migrate code tr??c (xem POSTGRESQL_MIGRATION.md)
+
+---
 
 #### Service 3: gateway
+
+**B??c 1**: Thï¿½m service m?i
 ```
-Root Directory: gateway
-Bi?n môi tr??ng:
-  - ASPNETCORE_ENVIRONMENT=Production
-  - ASPNETCORE_URLS=http://+:8080
-  - JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+1. V? Project view
+2. "+ New" ? "GitHub Repo" ? "url-shorten-system"
 ```
+
+**B??c 2**: Configure service ?? QUAN TR?NG
+```
+1. Service Name: "gateway"
+2. Root Directory: "gateway" ? B?T BU?C!
+```
+
+**B??c 3**: Set bi?n mï¿½i tr??ng
+```
+Variables:
+  ASPNETCORE_ENVIRONMENT=Production
+  ASPNETCORE_URLS=http://+:8080
+  JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+```
+
+**B??c 4**: Generate Public Domain
+```
+1. Settings ? Networking ? Generate Domain
+2. Copy domain (vd: gateway-production-xxxx.up.railway.app)
+3. L?U L?I domain nï¿½y ?? dï¿½ng cho frontend!
+```
+
+---
 
 #### Service 4: frontend
+
+**B??c 1**: Thï¿½m service m?i
 ```
-Root Directory: frontend
-Bi?n môi tr??ng:
-  - VUE_APP_API_URL=https://[gateway-domain].railway.app
+1. V? Project view
+2. "+ New" ? "GitHub Repo" ? "url-shorten-system"
 ```
 
-### 4. Generate Public Domains
+**B??c 2**: Configure service ?? QUAN TR?NG
 ```
-1. Vào Settings c?a "gateway" service
-2. Tab "Networking" ? Generate Domain
-3. Copy domain (vd: gateway-production-xxxx.up.railway.app)
-4. Vào Settings c?a "frontend" service
-5. Generate Domain cho frontend
+1. Service Name: "frontend"
+2. Root Directory: "frontend" ? B?T BU?C!
 ```
 
-### 5. Update ocelot.json (n?u c?n)
-C?p nh?t downstream URLs trong gateway ?? dùng private networking:
+**B??c 3**: Set bi?n mï¿½i tr??ng
+```
+Variables:
+  VUE_APP_API_URL=https://[GATEWAY_DOMAIN_T?_B??C_3]
+
+Vï¿½ d?:
+  VUE_APP_API_URL=https://gateway-production-xxxx.up.railway.app
+```
+
+**B??c 4**: Generate Public Domain
+```
+Settings ? Networking ? Generate Domain
+```
+
+---
+
+### 4. C?u hï¿½nh Private Networking (cho Gateway)
+
+Gateway c?n g?i cï¿½c services n?i b? qua private network:
+
+**File c?n update**: `gateway/Ocelot Gateway/ocelot.json`
+
+Tï¿½m vï¿½ thay ??i t?t c? `DownstreamHostAndPorts`:
+
 ```json
+// Cho service-node (auth)
 {
-  "Host": "service-node.railway.internal",
-  "Port": 5000
+  "DownstreamHostAndPorts": [
+    {
+      "Host": "service-node.railway.internal",
+      "Port": 5000
+    }
+  ]
+}
+
+// Cho service-dotnet (URL shortener)
+{
+  "DownstreamHostAndPorts": [
+    {
+      "Host": "service-dotnet.railway.internal",
+      "Port": 8080
+    }
+  ]
 }
 ```
 
+**Commit vï¿½ push**:
+```bash
+git add gateway/Ocelot\ Gateway/ocelot.json
+git commit -m "Update ocelot.json for Railway private networking"
+git push
+```
+
+Railway s? t? ??ng redeploy gateway service.
+
+---
+
+### 5. Update CORS (sau khi cï¿½ domains)
+
+**File**: `service-node/server.js`
+```javascript
+const corsOptions = {
+    origin: [
+        'https://your-frontend.railway.app',  // Thay = frontend domain
+        'https://your-gateway.railway.app',   // Thay = gateway domain
+        'http://localhost:8080'
+    ],
+    credentials: true
+};
+```
+
+**File**: `service-dotnet/url-shorten-service/Program.cs`
+```csharp
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.WithOrigins(
+                "https://your-frontend.railway.app",  // Thay domain
+                "http://localhost:8080"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+        });
+});
+```
+
+Commit vï¿½ push ?? trigger redeploy.
+
+---
+
 ### 6. Ki?m tra Deployment
 ```
-? Check logs c?a t?ng service (không có error)
-? Test endpoint: https://[gateway-domain]/swagger
+? All services showing "Active" status
+? Check logs c?a t?ng service (khï¿½ng cï¿½ error)
+? Test gateway endpoint: https://[gateway-domain]/swagger
 ? Test frontend: https://[frontend-domain]
+? Test authentication flow
+? Test URL shortening
 ```
+
+---
 
 ## ?? Troubleshooting nhanh
 
-### Build failed
-- Check logs trong Railway dashboard
-- Verify Dockerfile path
-- Ensure all dependencies in package.json/csproj
+### ? Error: "could not determine how to build the app"
 
-### Service crashed
-- Check environment variables
-- Verify database connections
-- Review application logs
+**Nguyï¿½n nhï¿½n**: Ch?a set Root Directory
 
-### CORS errors
-- Update allowed origins v?i Railway domains
-- Redeploy sau khi update CORS
+**Gi?i phï¿½p**:
+```
+1. Vï¿½o service b? l?i
+2. Settings ? Source
+3. Set "Root Directory" = tï¿½n folder service
+   (service-node / service-dotnet / gateway / frontend)
+4. Save ? Railway s? t? ??ng rebuild
+```
 
-## ?? Tài li?u chi ti?t
+### ? Build failed - Dockerfile not found
+
+**Gi?i phï¿½p**:
+```
+1. Verify Root Directory ?ï¿½ set ?ï¿½ng
+2. Check Dockerfile cï¿½ trong folder ?ï¿½ khï¿½ng
+3. Xem build logs ?? bi?t Railway ?ang tï¿½m file ? ?ï¿½u
+```
+
+### ? Service crashed after deploy
+
+**Check list**:
+```
+1. View Logs ?? xem error message
+2. Verify environment variables
+3. Check database connection strings
+4. Ensure PORT match v?i code
+```
+
+### ? Database connection failed
+
+**Gi?i phï¿½p**:
+```
+1. Check database service ?ang Active
+2. Verify variable reference: ${{MongoDB.MONGO_URL}} ho?c ${{Postgres.DATABASE_URL}}
+3. Enable Private Networking: Settings ? Networking
+4. Check connection string format
+```
+
+### ? CORS errors in browser
+
+**Gi?i phï¿½p**:
+```
+1. Update CORS origins v?i Railway domains
+2. Commit vï¿½ push ?? redeploy
+3. Clear browser cache
+4. Verify credentials: true setting
+```
+
+### ? 502 Bad Gateway
+
+**Gi?i phï¿½p**:
+```
+1. Check downstream services ?ang running
+2. Verify private networking URLs in ocelot.json
+3. Check service names match: [service-name].railway.internal
+4. View gateway logs
+```
+
+---
+
+## ?? Tï¿½i li?u chi ti?t
 
 - `RAILWAY_DEPLOYMENT.md` - H??ng d?n ??y ??
 - `ENVIRONMENT_VARIABLES.md` - Chi ti?t v? env vars
-- M?i service có `Dockerfile` và `railway.json`
+- `POSTGRESQL_MIGRATION.md` - Migrate t? SQL Server
+- `CHECKLIST.md` - Checklist ??y ??
+- M?i service cï¿½ `Dockerfile` vï¿½ `railway.json`
 
-## ?? Chi phí
+## ?? Chi phï¿½
 
 Railway free tier:
 - $5 credit/month
-- ~500 hours usage
-- ?? cho testing và small projects
+- ~500 hours usage (tï¿½nh trï¿½n t?t c? services)
+- 4 services + 2 databases = ~$0.50-1/day
+- ?? cho testing vï¿½ demo
+
+**Tip**: Pause services khï¿½ng dï¿½ng ?? ti?t ki?m credit
+
+## ?? Railway Dashboard Overview
+
+```
+Project: URL Shortener System
+??? MongoDB (Database)
+??? PostgreSQL (Database) 
+??? service-node (Service) - Root: service-node
+??? service-dotnet (Service) - Root: service-dotnet
+??? gateway (Service) - Root: gateway - Public Domain ?
+??? frontend (Service) - Root: frontend - Public Domain ?
+```
+
+## ?? Expected Resource Usage
+
+```
+Service          | RAM  | CPU | Storage
+-----------------|------|-----|--------
+MongoDB          | ~100MB | Low | Varies
+PostgreSQL       | ~100MB | Low | Varies
+service-node     | ~100MB | Low | -
+service-dotnet   | ~200MB | Med | -
+gateway          | ~200MB | Med | -
+frontend         | ~50MB  | Low | -
+```
 
 ## ?? C?n h? tr??
 
 1. Check Railway docs: https://docs.railway.app
 2. Railway Discord: https://discord.gg/railway
 3. Check logs trong Dashboard
+4. Review cï¿½c file .md trong repo nï¿½y
 
 ---
 
-**L?u ý quan tr?ng:**
-- SQL Server không có s?n trên Railway ? Khuy?n ngh? chuy?n sang PostgreSQL
-- M?i l?n thay ??i code và push lên GitHub, Railway s? t? ??ng redeploy
-- Private networking gi?a các services: `[service-name].railway.internal`
+## ?? Cï¿½c b??c tï¿½m t?t
+
+1. ? T?o Empty Project
+2. ? Add MongoDB + PostgreSQL
+3. ? Add 4 services t? cï¿½ng 1 GitHub repo
+4. ?? **QUAN TR?NG**: Set Root Directory cho T?NG service
+5. ? Set environment variables
+6. ? Generate domains cho gateway + frontend
+7. ? Update ocelot.json v?i private networking
+8. ? Update CORS v?i Railway domains
+9. ? Test deployment
+
+---
+
+**L?u ï¿½ quan tr?ng:**
+- ?? **B?T BU?C set Root Directory** cho m?i service
+- SQL Server khï¿½ng cï¿½ s?n trï¿½n Railway ? Khuy?n ngh? chuy?n sang PostgreSQL
+- M?i l?n thay ??i code vï¿½ push lï¿½n GitHub, Railway s? t? ??ng redeploy
+- Private networking: `[service-name].railway.internal`
+- Public domains: Generate trong Settings ? Networking
