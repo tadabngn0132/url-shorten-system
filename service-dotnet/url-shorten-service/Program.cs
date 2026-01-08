@@ -29,6 +29,23 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Tự động apply migrations khi app khởi động (cho Railway deployment)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var dbContext = services.GetRequiredService<url_shorten_serviceContext>();
+        dbContext.Database.Migrate();
+        Console.WriteLine("✅ Database migrations applied successfully!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error during migration: {ex.Message}");
+        throw;
+    }
+}
+
 // Cấu hình pipeline HTTP request
 if (app.Environment.IsDevelopment())
 {
