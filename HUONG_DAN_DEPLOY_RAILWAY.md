@@ -1,134 +1,223 @@
-# 🚀 HƯỚNG DẪN DEPLOY HỆ THỐNG LÊN RAILWAY - CHI TIẾT TỪNG BƯỚC
+# 🚀 DEPLOY LÊN RAILWAY - STEP BY STEP
 
-## 📋 MỤC LỤC
-1. [Giới thiệu](#giới-thiệu)
-2. [Chuẩn bị trước khi deploy](#chuẩn-bị-trước-khi-deploy)
-3. [Tạo Railway Project](#bước-1-tạo-railway-project)
-4. [Thêm Databases](#bước-2-thêm-databases)
-5. [Deploy từng Service](#bước-3-deploy-từng-service)
-6. [Cấu hình kết nối giữa các services](#bước-4-cấu-hình-kết-nối)
-7. [Kiểm tra và test](#bước-5-kiểm-tra-và-test)
-8. [Xử lý lỗi thường gặp](#xử-lý-lỗi-thường-gặp)
+> Làm theo từng bước, đúng thứ tự, không skip!
 
 ---
 
-## 📖 GIỚI THIỆU
+## BƯỚC 1: TẠO PROJECT
 
-Hệ thống URL Shortener của bạn gồm **4 services** cần deploy:
-
-```
-┌─────────────┐
-│  Frontend   │ ← Người dùng truy cập
-│  (Vue.js)   │
-└──────┬──────┘
-       │
-       ↓
-┌─────────────┐
-│   Gateway   │ ← API Gateway (Ocelot)
-│  (.NET 8)   │
-└──────┬──────┘
-       │
-       ├─────────────────────┐
-       │                     │
-       ↓                     ↓
-┌──────────────┐      ┌──────────────┐
-│ Service-Node │      │Service-DotNet│
-│  (Node.js)   │      │   (.NET 8)   │
-│              │      │              │
-│  + MongoDB   │      │ + PostgreSQL │
-└──────────────┘      └──────────────┘
-```
-
-**Quan trọng**: Đây là **Monorepo** (1 repo có nhiều services), nên bạn cần:
-- Deploy **4 lần** từ **cùng 1 repository**
-- Mỗi lần phải set **Root Directory** khác nhau
+1. Vào [railway.app](https://railway.app)
+2. Click **"New Project"** → **"Empty Project"**
+3. Đặt tên: `URL Shortener System`
 
 ---
 
-## 🎯 CHUẨN BỊ TRƯỚC KHI DEPLOY
+## BƯỚC 2: THÊM DATABASES
 
-### ✅ Checklist:
-- [ ] Có tài khoản Railway (đăng ký tại [railway.app](https://railway.app))
-- [ ] Code đã push lên GitHub
-- [ ] Đã test local bằng Docker (nếu có thể)
-- [ ] Đã đọc hướng dẫn này hết 1 lượt trước
+### Thêm MongoDB:
+1. Click **"+ New"** → **"Database"** → **"Add MongoDB"**
+2. Đợi status = **Active** (màu xanh)
 
-### 📝 Thông tin cần chuẩn bị:
-```
-Repository URL: https://github.com/[username]/url-shorten-system
-JWT_SECRET: t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
-```
+### Thêm PostgreSQL:
+1. Click **"+ New"** → **"Database"** → **"Add PostgreSQL"**  
+2. Đợi status = **Active**
+
+✅ Checkpoint: Có 2 databases màu xanh
 
 ---
 
-## 🏗️ BƯỚC 1: TẠO RAILWAY PROJECT
+## BƯỚC 3: DEPLOY SERVICE-NODE
 
-### 1.1 Tạo Project mới
-1. Truy cập: [https://railway.app](https://railway.app)
-2. Đăng nhập bằng GitHub
-3. Click nút **"New Project"** (góc trên bên phải)
-4. Chọn **"Empty Project"** (tạo project trống)
-5. Đặt tên project: `URL Shortener System`
+### 3.1 Thêm service:
+1. Click **"+ New"** → **"GitHub Repo"**
+2. Authorize GitHub (nếu lần đầu)
+3. Chọn repo: `url-shorten-system`
 
-> 💡 **Tại sao tạo Empty Project?** 
-> Vì chúng ta cần thêm databases trước, sau đó mới deploy các services.
+### 3.2 Cấu hình:
+1. Click vào service vừa tạo
+2. **Settings** → **Service Name**: Đổi thành `service-node`
+3. **Settings** → **Source** → **Root Directory**: Nhập `/service-node` (có dấu `/`)
+4. Save
 
-### 1.2 Giao diện Project
-Sau khi tạo xong, bạn sẽ thấy:
-- Canvas trống (nơi hiển thị các services)
-- Nút **"+ New"** để thêm services/databases
+### 3.3 Thêm Variables:
+```
+PORT=5000
+NODE_ENV=production
+JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+MONGODB_URI=${{MongoDB.MONGO_URL}}
+```
+
+### 3.4 Generate Domain:
+1. **Settings** → **Networking** → **Generate Domain**
+2. Nhập port: `5000`
+3. Lưu lại URL
+
+### 3.5 Đợi deploy xong:
+Tab **Deployments** → Đợi status = **Success** (màu xanh)
+
+✅ Checkpoint: service-node Active, có domain
 
 ---
 
-## 💾 BƯỚC 2: THÊM DATABASES
+## BƯỚC 4: DEPLOY SERVICE-DOTNET
 
-### 2.1 Thêm MongoDB
+### 4.1 Thêm service:
+1. Về Project Canvas (click tên project)
+2. Click **"+ New"** → **"GitHub Repo"**
+3. Chọn **LẠI** repo: `url-shorten-system` (đúng rồi, chọn lại)
 
-**Tại sao cần MongoDB?**  
-Service-Node (authentication) dùng MongoDB để lưu thông tin users.
+### 4.2 Cấu hình:
+1. Click vào service mới
+2. **Settings** → **Service Name**: `service-dotnet`
+3. **Settings** → **Root Directory**: `/service-dotnet`
+4. Save
 
-**Các bước:**
-1. Click nút **"+ New"**
-2. Chọn **"Database"** → **"Add MongoDB"**
-3. Đợi ~30 giây để Railway khởi tạo
-4. Khi thấy status = **"Active"** (màu xanh) → OK
-
-**Lưu ý:**
-- Railway tự động tạo biến `MONGO_URL`
-- Bạn không cần copy connection string thủ công
-- Service-Node sẽ tự động nhận được biến này
-
-### 2.2 Thêm PostgreSQL
-
-**Tại sao cần PostgreSQL?**  
-Service-DotNet (URL shortener) dùng PostgreSQL để lưu URLs đã rút gọn.
-
-**Các bước:**
-1. Click nút **"+ New"**
-2. Chọn **"Database"** → **"Add PostgreSQL"**
-3. Đợi ~30 giây để Railway khởi tạo
-4. Khi thấy status = **"Active"** → OK
-
-**Lưu ý:**
-- Railway tự động tạo biến `DATABASE_URL`
-- Format: `postgresql://user:pass@host:port/dbname`
-
-### ✅ Checkpoint 1:
-Bây giờ trên canvas bạn phải thấy:
+### 4.3 Thêm Variables:
 ```
-[MongoDB] [PostgreSQL]
-  (Active)  (Active)
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+JwtSettings__ExpiryMinutes=1440
+JwtSettings__Issuer=UrlShortener
+ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}
 ```
+
+### 4.4 Generate Domain:
+1. **Settings** → **Networking** → **Generate Domain**
+2. Nhập port: `8080`
+
+### 4.5 Đợi deploy:
+**Deployments** → Đợi **Success**
+
+✅ Checkpoint: service-dotnet Active, có domain
 
 ---
 
-## 🚢 BƯỚC 3: DEPLOY TỪNG SERVICE
+## BƯỚC 5: DEPLOY GATEWAY
 
-> ⚠️ **QUAN TRỌNG**: Deploy theo đúng thứ tự sau:
-> 1. Service-Node (Auth)
-> 2. Service-DotNet (URL)
-> 3. Gateway
-> 4. Frontend
+### 5.1 Thêm service:
+**"+ New"** → **"GitHub Repo"** → `url-shorten-system`
+
+### 5.2 Cấu hình:
+1. **Service Name**: `gateway`
+2. **Root Directory**: `/gateway`
+
+### 5.3 Thêm Variables:
+```
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+```
+
+### 5.4 Sửa file ocelot.json:
+
+Mở `gateway/Ocelot Gateway/ocelot.json`, tìm và sửa:
+
+**Tìm phần Service-Node:**
+```json
+"DownstreamHostAndPorts": [
+  {
+    "Host": "service-node.railway.internal",
+    "Port": 5000
+  }
+]
+```
+
+**Tìm phần Service-DotNet:**
+```json
+"DownstreamHostAndPorts": [
+  {
+    "Host": "service-dotnet.railway.internal",
+    "Port": 8080
+  }
+]
+```
+
+Commit và push:
+```powershell
+git add .
+git commit -m "Update ocelot.json for Railway"
+git push
+```
+
+### 5.5 Generate Domain:
+1. **Settings** → **Networking** → **Generate Domain**
+2. Nhập port: `8080`
+3. **📌 COPY VÀ LƯU URL NÀY** (dùng cho Frontend!)
+
+### 5.6 Đợi deploy:
+**Deployments** → Đợi **Success**
+
+✅ Checkpoint: gateway Active, có domain, đã sửa ocelot.json
+
+---
+
+## BƯỚC 6: DEPLOY FRONTEND
+
+### 6.1 Thêm service:
+**"+ New"** → **"GitHub Repo"** → `url-shorten-system`
+
+### 6.2 Cấu hình:
+1. **Service Name**: `frontend`
+2. **Root Directory**: `/frontend`
+
+### 6.3 Thêm Variables:
+```
+VUE_APP_API_URL=https://gateway-production-xxxx.up.railway.app
+```
+*Thay domain thật của Gateway*
+
+### 6.4 Generate Domain:
+1. **Settings** → **Networking** → **Generate Domain**
+2. Nhập port: `80`
+
+### 6.5 Đợi deploy:
+**Deployments** → Đợi **Success**
+
+✅ Checkpoint: frontend Active, có domain
+
+---
+
+## BƯỚC 7: TEST
+
+### Test nhanh:
+1. Mở URL frontend: `https://frontend-production-xxxx.up.railway.app`
+2. Đăng ký tài khoản
+3. Đăng nhập
+4. Tạo short URL
+5. Click vào short URL → redirect đúng
+
+✅ Nếu OK → **XONG!** 🎉
+
+---
+
+## LỖI THƯỜNG GẶP
+
+### Lỗi 1: Build failed - "Could not determine how to build"
+→ Chưa set **Root Directory** (phải có dấu `/` đầu: `/service-node`)
+
+### Lỗi 2: Cannot connect to database
+→ Check Variables:
+- `MONGODB_URI=${{MongoDB.MONGO_URL}}` (đúng tên service)
+- `ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}`
+
+### Lỗi 3: Gateway 502 Bad Gateway
+→ Chưa sửa `ocelot.json` đúng (phải `.railway.internal`)
+
+### Lỗi 4: Frontend không kết nối được API
+→ Check `VUE_APP_API_URL` phải là domain thật của Gateway
+
+---
+
+## CHECKLIST CUỐI
+
+- [ ] 6 services đều **Active** (màu xanh)
+- [ ] Frontend có thể mở được
+- [ ] Đăng ký/đăng nhập OK
+- [ ] Tạo URL OK
+- [ ] Click short URL redirect đúng
+
+**DONE!** 🚀
 
 ---
 
@@ -168,37 +257,50 @@ Bây giờ trên canvas bạn phải thấy:
 
 #### Bước 3: Thêm Environment Variables
 
-1. Đi đến tab **"Variables"** (icon 🔧)
-2. Click **"+ New Variable"**
-3. Thêm từng biến sau:
+Tab **"Variables"**, copy-paste từng dòng (Railway sẽ tự tách Name/Value):
 
-**Biến 1:**
 ```
-Name:  PORT
-Value: 5000
-```
-
-**Biến 2:**
-```
-Name:  NODE_ENV
-Value: production
+PORT=5000
+NODE_ENV=production
+JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+MONGODB_URI=${{MongoDB.MONGO_URL}}
 ```
 
-**Biến 3:**
+> ⚠️ **Lưu ý dòng cuối:** `MONGODB_URI` phải dùng `${{MongoDB.MONGO_URL}}` để kết nối đến database service.
+
+| Biến | Value | Railway Suggest? | Lưu ý |
+|------|-------|------------------|-------|
+| **PORT** | `5000` | ✅ Có thể dùng | Nếu Railway suggest `PORT=5000` → OK dùng luôn |
+| **NODE_ENV** | `production` | ✅ Có thể dùng | Suggest thường là `production` → OK |
+| **JWT_SECRET** | `t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL` | ❌ PHẢI tự thêm | Railway không biết secret key |
+| **MONGODB_URI** | `${{MongoDB.MONGO_URL}}` | ❌ PHẢI tự thêm | Railway suggest sẽ để trống hoặc sai |
+
+**Cách thêm:**
+
+**Biến 1: PORT**
+- Nếu Railway suggest `PORT=5000` → Click ✓ để accept
+- Nếu không suggest → Thêm thủ công: `PORT` = `5000`
+
+**Biến 2: NODE_ENV**
+- Nếu suggest `production` → Accept
+- Nếu không → Thêm: `NODE_ENV` = `production`
+
+**Biến 3: JWT_SECRET** (PHẢI tự thêm)
 ```
 Name:  JWT_SECRET
 Value: t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
 ```
 
-**Biến 4 (Reference MongoDB):**
+**Biến 4: MONGODB_URI** (PHẢI tự thêm - QUAN TRỌNG NHẤT!)
 ```
 Name:  MONGODB_URI
 Value: ${{MongoDB.MONGO_URL}}
 ```
 
-> 💡 **Giải thích biến thứ 4:**
-> - `${{MongoDB.MONGO_URL}}` là cú pháp đặc biệt của Railway
-> - Railway sẽ tự động thay thế bằng connection string thật
+> 🔴 **CỰC KỲ QUAN TRỌNG:**
+> - Railway suggest `MONGODB_URI` sẽ để trống hoặc có giá trị sai
+> - PHẢI xóa và thêm lại với value: `${{MongoDB.MONGO_URL}}`
+> - Đây là cú pháp đặc biệt để reference MongoDB service
 > - `MongoDB` là tên service database bạn tạo ở bước 2.1
 
 **Cách thêm biến:**
@@ -281,7 +383,16 @@ using (var scope = app.Services.CreateScope())
    
 3. Mục **"Source"** → **"Root Directory"**:
    - Nhập: `/service-dotnet`
-   - Lưu lại
+> 💡 Railway có thể suggest variables, nhưng **KHÔNG đủ**! Làm theo bảng dưới:
+
+Tab **"Variables"**, thêm các biến sau:
+
+| Biến | Value | Suggest? | Action |
+|------|-------|----------|--------|
+| ASPNETCORE_ENVIRONMENT | `Production` | ✅ Có thể có | Accept hoặc tự thêm |
+| ASPNETCORE_URLS | `http://+:8080` | ✅ Có thể có | Accept hoặc tự thêm |
+| JwtSettings__* | (xem bên dưới) | ❌ Không có | PHẢI tự thêm |
+| ConnectionStrings__* | (xem bên dưới) | ❌ Sai | PHẢI sửa lại |
 
 > ⚠️ Nhớ có dấu `/` ở đầu nhé!
 
@@ -303,15 +414,17 @@ Value: http://+:8080
 Name:  JwtSettings__Secret
 Value: t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
 
-Name:  JwtSettings__ExpiryMinutes
-Value: 1440
-
-Name:  JwtSettings__Issuer
-Value: UrlShortener
+Name:  JwtSettings__ExpiryMinut (QUAN TRỌNG NHẤT!)
+```
+Name:  ConnectionStrings__url_shorten_serviceContext
+Value: ${{Postgres.DATABASE_URL}}
 ```
 
-> 💡 **Lưu ý**: Dùng `__` (2 dấu gạch dưới) để tạo nested config trong .NET
-
+> 🔴 **LƯU Ý:**
+> - Railway CÓ THỂ suggest biến này nhưng value sẽ SAI hoặc để TRỐNG
+> - PHẢI xóa và thêm lại với value: `${{Postgres.DATABASE_URL}}`
+> - `Postgres` là tên service PostgreSQL bạn tạo ở bước 2.2
+> - Railway tự động thay thế bằng connection string thật khi runtime
 **Biến 6: Database Connection**
 ```
 Name:  ConnectionStrings__url_shorten_serviceContext
@@ -364,15 +477,12 @@ Value: ${{Postgres.DATABASE_URL}}
 
 #### Bước 3: Thêm Environment Variables
 
+Tab **"Variables"**, copy-paste từng dòng:
+
 ```
-Name:  ASPNETCORE_ENVIRONMENT
-Value: Production
-
-Name:  ASPNETCORE_URLS
-Value: http://+:8080
-
-Name:  JwtSettings__Secret
-Value: t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
 ```
 
 #### Bước 4: Cập nhật file ocelot.json ⭐ QUAN TRỌNG
@@ -469,14 +579,13 @@ git push
 
 #### Bước 3: Thêm Environment Variables
 
+Tab **"Variables"**, thêm biến:
+
 ```
-Name:  VUE_APP_API_URL
-Value: https://gateway.up.railway.app
+VUE_APP_API_URL=https://gateway.up.railway.app
 ```
 
-> 🔴 **THAY `gateway.up.railway.app` bằng domain thật của Gateway bạn!**
-> - Copy từ Gateway Settings → Networking → Public Domain
-> - Thêm `https://` vào đầu
+> 🔴 **THAY `gateway.up.railway.app` bằng domain thật của Gateway!** Copy từ Gateway → Settings → Networking → Public Domain
 
 #### Bước 4: Deploy
 
@@ -600,7 +709,43 @@ Nếu có lỗi, check logs của từng service:
 
 ---
 
-## 🛠️ XỬ LÝ LỖI THƯỜNG GẶP
+## 🛠️ X0: "Railway Suggested Variables - Nên dùng hay không?"
+
+**Câu hỏi:** Railway detect và suggest biến `PORT`, `MONGODB_URI`, v.v. Tôi có nên dùng không?
+
+**Trả lời:**
+
+✅ **CÓ THỂ DÙNG (nhưng verify lại):**
+- `PORT=5000` → OK
+- `NODE_ENV=production` → OK
+- `ASPNETCORE_ENVIRONMENT=Production` → OK
+- `ASPNETCORE_URLS=http://+:8080` → OK
+
+❌ **KHÔNG DÙNG (phải tự thêm giá trị đúng):**
+- `MONGODB_URI` → Railway suggest sẽ để **TRỐNG** → PHẢI sửa thành `${{MongoDB.MONGO_URL}}`
+- `ConnectionStrings__url_shorten_serviceContext` → Suggest sẽ **SAI** → PHẢI sửa thành `${{Postgres.DATABASE_URL}}`
+- `JWT_SECRET` → Railway **KHÔNG BIẾT** secret key → PHẢI tự thêm
+
+**Quy tắc vàng:**
+1. Accept các biến đơn giản (PORT, NODE_ENV, ASPNETCORE_*)
+2. **BẮT BUỘC kiểm tra** và sửa lại các biến:
+   - Có chứa `${{...}}` (reference services)
+   - Là secrets/keys
+   - Là connection strings
+
+**Ví dụ sai thường gặp từ Railway suggest:**
+```
+❌ MONGODB_URI=               (trống - SAI!)
+❌ MONGODB_URI=mongodb://localhost:27017  (local - SAI!)
+✅ MONGODB_URI=${{MongoDB.MONGO_URL}}  (ĐÚNG!)
+
+❌ ConnectionStrings__url_shorten_serviceContext=  (trống - SAI!)
+✅ ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}  (ĐÚNG!)
+```
+
+---
+
+### Lỗi Ử LÝ LỖI THƯỜNG GẶP
 
 ### Lỗi 1: "Could not determine how to build the app"
 
@@ -706,9 +851,10 @@ Nếu có lỗi, check logs của từng service:
 | frontend | `/frontend` | ✅ | - |
 
 ### Environment Variables - Tóm tắt:
+Copy vào Railway:
 
 **Service-Node:**
-```env
+```
 PORT=5000
 NODE_ENV=production
 JWT_SECRET=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
@@ -716,7 +862,7 @@ MONGODB_URI=${{MongoDB.MONGO_URL}}
 ```
 
 **Service-DotNet:**
-```env
+```
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://+:8080
 JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
@@ -726,17 +872,17 @@ ConnectionStrings__url_shorten_serviceContext=${{Postgres.DATABASE_URL}}
 ```
 
 **Gateway:**
-```env
+```
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://+:8080
 JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
 ```
 
 **Frontend:**
-```env
-VUE_APP_API_URL=https://[GATEWAY_DOMAIN]
 ```
-
+VUE_APP_API_URL=https://gateway-production-xxxx.up.railway.app
+```
+*(Thay bằng domain thật của Gateway)*
 ---
 
 ## 🎯 CHECKLIST CUỐI CÙNG

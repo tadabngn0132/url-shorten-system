@@ -15,12 +15,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/login",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -36,12 +38,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/register",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -57,12 +61,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/change-password",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer"
       },
@@ -81,24 +87,28 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/profile",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     },
     {
       "DownstreamPathTemplate": "/verify",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth/verify",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -114,24 +124,29 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
+          "Host": "service-node.railway.internal",
           "Port": 5000
         }
       ],
       "UpstreamPathTemplate": "/gateway/auth",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/Urls",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls",
-      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -159,12 +174,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/redirect/{shortCode}",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -184,12 +201,16 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/{id}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "DELETE" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -212,12 +233,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/{id}/toggle-status",
-      "UpstreamHttpMethod": [ "PUT" ],
+      "UpstreamHttpMethod": [
+        "PUT"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -236,12 +259,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/transfer-ownership",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -260,12 +285,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/dashboard-stats/{urlId}",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -284,12 +311,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/dashboard-stats",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
@@ -308,12 +337,14 @@
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
-          "Host": "localhost",
-          "Port": 6996
+          "Host": "service-dotnet.railway.internal",
+          "Port": 8080
         }
       ],
       "UpstreamPathTemplate": "/gateway/urls/bulk",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "AddHeadersToRequest": {
         "Authorization": "{Request.Headers.Authorization}"
       },
