@@ -1,8 +1,8 @@
 # Deploy URL Shorten System to Railway
 
-H??ng d?n deploy h? th?ng rút g?n URL lên Railway.
+H??ng d?n deploy h? th?ng rï¿½t g?n URL lï¿½n Railway.
 
-## T?ng quan ki?n trúc
+## T?ng quan ki?n trï¿½c
 
 H? th?ng g?m 4 services:
 - **Frontend**: Vue.js (Nginx)
@@ -12,20 +12,20 @@ H? th?ng g?m 4 services:
 
 ## B??c 1: Chu?n b? Railway Project
 
-1. ??ng nh?p vào [Railway](https://railway.app)
+1. ??ng nh?p vï¿½o [Railway](https://railway.app)
 2. T?o m?t Project m?i
-3. Trong Project, t?o các services sau:
+3. Trong Project, t?o cï¿½c services sau:
 
 ### Service 1: MongoDB Database
 - Click **+ New** ? **Database** ? **Add MongoDB**
-- Railway s? t? ??ng t?o và cung c?p `MONGODB_URI`
+- Railway s? t? ??ng t?o vï¿½ cung c?p `MONGODB_URI`
 
 ### Service 2: PostgreSQL (ho?c MySQL cho URL Service)
 - Click **+ New** ? **Database** ? **Add PostgreSQL**
 - Railway s? t? ??ng t?o connection string
-- **L?u ý**: N?u mu?n dùng SQL Server, c?n t? host ho?c dùng Azure SQL
+- **L?u ï¿½**: N?u mu?n dï¿½ng SQL Server, c?n t? host ho?c dï¿½ng Azure SQL
 
-## B??c 2: Deploy các Services
+## B??c 2: Deploy cï¿½c Services
 
 ### 2.1 Deploy Service-Node (Authentication)
 
@@ -35,7 +35,7 @@ H? th?ng g?m 4 services:
    - **Build Command**: (?? tr?ng, Docker s? t? build)
    - **Start Command**: (?? tr?ng, s? d?ng CMD trong Dockerfile)
 
-3. Thêm **Environment Variables**:
+3. Thï¿½m **Environment Variables**:
    ```
    PORT=5000
    MONGODB_URI=${{MongoDB.MONGO_URL}}
@@ -43,16 +43,16 @@ H? th?ng g?m 4 services:
    NODE_ENV=production
    ```
 
-4. Railway s? t? detect Dockerfile và build
+4. Railway s? t? detect Dockerfile vï¿½ build
 
 ### 2.2 Deploy Service-DotNet (URL Shortener)
 
-1. Click **+ New** ? **GitHub Repo** ? ch?n cùng repository
+1. Click **+ New** ? **GitHub Repo** ? ch?n cï¿½ng repository
 2. Trong **Settings**:
    - **Root Directory**: `service-dotnet`
    - Railway s? t? ??ng detect Dockerfile
 
-3. Thêm **Environment Variables**:
+3. Thï¿½m **Environment Variables**:
    ```
    ASPNETCORE_ENVIRONMENT=Production
    ASPNETCORE_URLS=http://+:8080
@@ -62,58 +62,64 @@ H? th?ng g?m 4 services:
    JwtSettings__Issuer=UrlShortener
    ```
 
-**L?u ý**: N?u dùng PostgreSQL, c?n update code ?? dùng Npgsql thay vì SQL Server.
+**L?u ï¿½**: N?u dï¿½ng PostgreSQL, c?n update code ?? dï¿½ng Npgsql thay vï¿½ SQL Server.
 
 ### 2.3 Deploy Gateway (Ocelot)
 
-1. Click **+ New** ? **GitHub Repo** ? ch?n cùng repository
+1. Click **+ New** ? **GitHub Repo** ? ch?n cï¿½ng repository
 2. Trong **Settings**:
    - **Root Directory**: `gateway`
 
-3. Thêm **Environment Variables**:
+3. Thï¿½m **Environment Variables**:
    ```
    ASPNETCORE_ENVIRONMENT=Production
    ASPNETCORE_URLS=http://+:8080
    JwtSettings__Secret=t4LQRcBnnA6hyucvkz6WJcwzaQA3GtF92bHatyNYh4D7XeJJpKCL
    ```
 
-4. **C?p nh?t ocelot.json** ?? tr? ??n internal URLs c?a các services:
+4. **C?p nh?t ocelot.json** ?? tr? ??n internal URLs c?a cï¿½c services:
    - Service-Node: `http://service-node.railway.internal:5000`
    - Service-DotNet: `http://service-dotnet.railway.internal:8080`
 
 ### 2.4 Deploy Frontend
 
-1. Click **+ New** ? **GitHub Repo** ? ch?n cùng repository
+1. Click **+ New** ? **GitHub Repo** ? ch?n cï¿½ng repository
 2. Trong **Settings**:
    - **Root Directory**: `frontend`
 
 3. **Environment Variables**:
    ```
-   VUE_APP_API_URL=${{Gateway.RAILWAY_PUBLIC_DOMAIN}}
+   VUE_APP_API_BASE_URL=https://${{Gateway.RAILWAY_STATIC_URL}}
    ```
+   
+   **L?u ï¿½**: 
+   - TÃªn bi?n ph?i lï¿½ `VUE_APP_API_BASE_URL` (KHÃ”NG ph?i VUE_APP_API_URL)
+   - Nh? thï¿½m `https://` tr??c domain c?a Gateway
+   - Dï¿½ng `RAILWAY_STATIC_URL` thay vï¿½ `RAILWAY_PUBLIC_DOMAIN`
+   - VD: `https://gateway-production-xxxx.up.railway.app`
 
 4. Expose port 80 ?? Railway t?o public domain
 
-## B??c 3: C?u hình Networking
+## B??c 3: C?u hï¿½nh Networking
 
 Railway cung c?p 2 lo?i networking:
-- **Public Domain**: Cho frontend và gateway (public access)
+- **Public Domain**: Cho frontend vï¿½ gateway (public access)
 - **Private Network**: Service-to-service communication
 
 1. T?o **Public Domain** cho:
    - Frontend
    - Gateway
 
-2. Các service n?i b? dùng **Private Network**:
+2. Cï¿½c service n?i b? dï¿½ng **Private Network**:
    - `service-node.railway.internal`
    - `service-dotnet.railway.internal`
 
 ## B??c 4: Migration Database
 
 ### Cho Service-DotNet:
-Railway không t? ch?y migrations. B?n c?n:
+Railway khï¿½ng t? ch?y migrations. B?n c?n:
 
-**Option 1**: Thêm migration vào startup code
+**Option 1**: Thï¿½m migration vï¿½o startup code
 ```csharp
 // Program.cs
 using (var scope = app.Services.CreateScope())
@@ -123,7 +129,7 @@ using (var scope = app.Services.CreateScope())
 }
 ```
 
-**Option 2**: Ch?y migration th? công qua Railway CLI
+**Option 2**: Ch?y migration th? cï¿½ng qua Railway CLI
 ```bash
 railway run dotnet ef database update
 ```
@@ -131,21 +137,21 @@ railway run dotnet ef database update
 ## B??c 5: Ki?m tra Deployment
 
 1. Ki?m tra logs c?a t?ng service trong Railway Dashboard
-2. Test các endpoints:
+2. Test cï¿½c endpoints:
    - Frontend: `https://your-frontend.railway.app`
    - Gateway: `https://your-gateway.railway.app/swagger`
    - Health checks
 
-## L?u ý quan tr?ng
+## L?u ï¿½ quan tr?ng
 
 ### 1. Database cho .NET Service
-Railway không có SQL Server native. Các options:
-- ? **Khuy?n ngh?**: Chuy?n sang PostgreSQL (update code và packages)
-- Dùng Azure SQL Database (external)
-- Dùng MySQL (Railway có support)
+Railway khï¿½ng cï¿½ SQL Server native. Cï¿½c options:
+- ? **Khuy?n ngh?**: Chuy?n sang PostgreSQL (update code vï¿½ packages)
+- Dï¿½ng Azure SQL Database (external)
+- Dï¿½ng MySQL (Railway cï¿½ support)
 
 ### 2. CORS Configuration
-Update CORS trong các services ?? cho phép domain c?a Railway:
+Update CORS trong cï¿½c services ?? cho phï¿½p domain c?a Railway:
 ```javascript
 // service-node/server.js
 const corsOptions = {
@@ -159,20 +165,20 @@ const corsOptions = {
 
 ### 3. Environment-specific Configs
 - T?o `appsettings.Production.json` cho .NET services
-- Dùng bi?n môi tr??ng thay vì hardcode
-- Không commit secrets vào Git
+- Dï¿½ng bi?n mï¿½i tr??ng thay vï¿½ hardcode
+- Khï¿½ng commit secrets vï¿½o Git
 
 ### 4. Pricing
 - Railway free tier: $5 credit/month
-- M?i service tính ti?n theo usage
+- M?i service tï¿½nh ti?n theo usage
 - Database c?n nhi?u resources nh?t
 
 ## Troubleshooting
 
-### Service không start
+### Service khï¿½ng start
 - Check logs trong Railway dashboard
 - Verify environment variables
-- Ensure Dockerfile EXPOSE ?úng port
+- Ensure Dockerfile EXPOSE ?ï¿½ng port
 
 ### Database connection failed
 - Verify connection string format
@@ -186,10 +192,10 @@ const corsOptions = {
 
 ## Deployment Updates
 
-Khi push code m?i lên GitHub:
+Khi push code m?i lï¿½n GitHub:
 1. Railway t? ??ng detect changes
-2. Rebuild và redeploy service
-3. Zero-downtime deployment (n?u c?u hình ?úng)
+2. Rebuild vï¿½ redeploy service
+3. Zero-downtime deployment (n?u c?u hï¿½nh ?ï¿½ng)
 
 ## Resources
 

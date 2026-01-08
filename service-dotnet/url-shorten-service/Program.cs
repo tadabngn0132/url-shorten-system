@@ -5,7 +5,7 @@ using url_shorten_service.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Convert Railway PostgreSQL URI to Npgsql connection string
-var connectionString = builder.Configuration.GetConnectionString("url_shorten_serviceContext") 
+var connectionString = builder.Configuration.GetConnectionString("url_shorten_serviceContext")
     ?? throw new InvalidOperationException("Connection string not found.");
 
 // Railway cung cấp URI format, cần convert sang Npgsql format
