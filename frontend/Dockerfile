@@ -8,6 +8,10 @@ RUN npm install
 
 COPY . .
 
+# Accept build argument for API base URL
+ARG VUE_APP_API_BASE_URL
+ENV VUE_APP_API_BASE_URL=$VUE_APP_API_BASE_URL
+
 RUN npm run build
 
 FROM nginx:alpine
