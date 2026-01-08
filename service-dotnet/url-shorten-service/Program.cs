@@ -33,13 +33,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<url_shorten_serviceContext>();
+
     try
     {
-        var dbContext = services.GetRequiredService<url_shorten_serviceContext>();
-
         // EnsureCreated: Tạo database từ models, không cần migrations files
         dbContext.Database.EnsureCreated();
-
         Console.WriteLine("✅ Database created successfully!");
     }
     catch (Exception ex)
