@@ -4,9 +4,20 @@ using url_shorten_service.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Convert Railway PostgreSQL URI to Npgsql connection string
+var connectionString = builder.Configuration.GetConnectionString("url_shorten_serviceContext") 
+    ?? throw new InvalidOperationException("Connection string not found.");
+
+// Railway cung cấp URI format, cần convert sang Npgsql format
+if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
+{
+    var uri = new Uri(connectionString);
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Prefer;Trust Server Certificate=true";
+}
+
 // Cấu hình DbContext
 builder.Services.AddDbContext<url_shorten_serviceContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("url_shorten_serviceContext") ?? throw new InvalidOperationException("Connection string 'url_shorten_serviceContext' not found.")));
+    options.UseNpgsql(connectionString));
 
 // Cấu hình CORS
 builder.Services.AddCors(options =>
